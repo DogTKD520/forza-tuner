@@ -27,48 +27,113 @@ function emptyBuffer() {
   return new Array(MAX_DATA_POINTS).fill(null);
 }
 
-/** Return a gradient fill for speed chart */
-function speedGradient(ctx) {
-  const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-  gradient.addColorStop(0, '#00d4ff44');
-  gradient.addColorStop(1, '#00d4ff00');
-  return gradient;
-}
+// ── Telemetry chart ──────────────────────────────────────────
+const telemetryCtx = document.getElementById('chart-telemetry')?.getContext('2d');
+let telemetryChart = null;
 
-// ── Speed chart ──────────────────────────────────────────────
-const speedCtx = document.getElementById('chart-speed')?.getContext('2d');
-let speedChart = null;
-if (speedCtx) {
-  speedChart = new Chart(speedCtx, {
+if (telemetryCtx) {
+  telemetryChart = new Chart(telemetryCtx, {
     type: 'line',
     data: {
       labels: emptyBuffer(),
-      datasets: [{
-        data: emptyBuffer(),
-        borderColor: '#00d4ff',
-        borderWidth: 1.5,
-        fill: true,
-        backgroundColor: speedGradient(speedCtx),
-        tension: 0.3,
-      }],
+      datasets: [
+        {
+          label: 'Speed',
+          data: emptyBuffer(),
+          borderColor: '#00d4ff',
+          borderWidth: 1.5,
+          yAxisID: 'ySpeed',
+          tension: 0.3,
+          pointRadius: 0
+        },
+        {
+          label: 'Lateral G',
+          data: emptyBuffer(),
+          borderColor: '#ff4060',
+          borderWidth: 1.5,
+          yAxisID: 'yGForce',
+          tension: 0.3,
+          pointRadius: 0
+        },
+        {
+          label: 'Avg Slip Ratio',
+          data: emptyBuffer(),
+          borderColor: '#00e676',
+          borderWidth: 1.5,
+          yAxisID: 'ySlip',
+          tension: 0.3,
+          pointRadius: 0
+        }
+      ],
     },
     options: {
       ...CHART_DEFAULTS,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: '#7a8399', boxWidth: 12 } },
+        tooltip: { enabled: false }
+      },
       scales: {
-        ...CHART_DEFAULTS.scales,
-        y: { ...CHART_DEFAULTS.scales.y, min: 0, title: { display: false } },
+        x: { display: false },
+        ySpeed: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          ticks: { color: '#00d4ff', font: { size: 10 }, maxTicksLimit: 4 },
+          grid: { color: '#ffffff0a' },
+          min: 0,
+        },
+        yGForce: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          ticks: { color: '#ff4060', font: { size: 10 }, maxTicksLimit: 4 },
+          grid: { drawOnChartArea: false },
+          min: -2,
+          max: 2,
+        },
+        ySlip: {
+          type: 'linear',
+          display: false, // hidden axis to scale slip
+          min: -2,
+          max: 2,
+        }
       },
     },
   });
 }
 
-/** Push a new speed value (km/h) onto the rolling chart. */
-export function pushSpeedSample(kph) {
-  if (!speedChart) return;
-  const dataset = speedChart.data.datasets[0];
-  dataset.data.push(kph);
-  if (dataset.data.length > MAX_DATA_POINTS) dataset.data.shift();
-  speedChart.data.labels.push('');
-  if (speedChart.data.labels.length > MAX_DATA_POINTS) speedChart.data.labels.shift();
-  speedChart.update('none');   // skip animation for performance
+/** Push a new telemetry sample onto the rolling chart. */
+export function pushTelemetrySample(frame, unit) {
+  if (!telemetryChart) return;
+  
+  const speedFactor = unit === 'metric' ? 1 : 0.621371;
+  const speedVal = (frame.speed_kph ?? 0) * speedFactor;
+  
+  // Calculate avg slip ratio
+  const slipObj = frame.tire_slip_ratio;
+  let avgSlip = 0;
+  if (slipObj) {
+    avgSlip = (slipObj.fl + slipObj.fr + slipObj.rl + slipObj.rr) / 4.0;
+  }
+  
+  const latG = frame.lateral_g ?? 0;
+
+  const labels = telemetryChart.data.labels;
+  const dataSpeed = telemetryChart.data.datasets[0].data;
+  const dataG = telemetryChart.data.datasets[1].data;
+  const dataSlip = telemetryChart.data.datasets[2].data;
+
+  dataSpeed.push(speedVal);
+  dataG.push(latG);
+  dataSlip.push(avgSlip);
+  labels.push('');
+
+  if (dataSpeed.length > MAX_DATA_POINTS) {
+    dataSpeed.shift();
+    dataG.shift();
+    dataSlip.shift();
+    labels.shift();
+  }
+
+  telemetryChart.update('none');
 }

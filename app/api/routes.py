@@ -80,8 +80,49 @@ class SetupCreateRequest(BaseModel):
     tuneable_springs: bool = True
     tuneable_arbs: bool = True
     tuneable_dampers: bool = True
-    tuneable_aero: bool = True
-    tuneable_diff: bool = True
+    tuneable_aero_front: bool = True
+    tuneable_aero_rear: bool = True
+    diff_upgrade_type: str = "Race"
+
+    # Drivetrain
+    drivetrain: str = "AWD"
+    
+    # Gearing
+    final_drive: float = 3.50
+    gear_1: float = 2.89
+    gear_2: float = 1.99
+    gear_3: float = 1.49
+    gear_4: float = 1.16
+    gear_5: float = 0.94
+    gear_6: float = 0.78
+    gear_7: float = 0.65
+    gear_8: float = 0.55
+    gear_9: float = 0.48
+    gear_10: float = 0.42
+
+    # Alignment Extensions
+    toe_front: float = 0.0
+    toe_rear: float = 0.0
+    caster_front: float = 5.0
+
+    # Ride Height
+    ride_height_front: float = 5.0
+    ride_height_rear: float = 5.0
+
+    # Aero Extensions
+    downforce_front: float = 100.0
+    downforce_rear: float = 150.0
+
+    # Brakes
+    brake_balance: float = 50.0
+    brake_pressure: float = 100.0
+
+    # Differential Extensions
+    diff_front_accel: float = 25.0
+    diff_front_decel: float = 0.0
+    diff_rear_accel: float = 50.0
+    diff_rear_decel: float = 15.0
+    diff_center_balance: float = 65.0
 
     # Discipline / Goal
     tuning_goal: str = "street_road"
@@ -191,8 +232,35 @@ async def create_setup(
         tuneable_springs=body.tuneable_springs,
         tuneable_arbs=body.tuneable_arbs,
         tuneable_dampers=body.tuneable_dampers,
-        tuneable_aero=body.tuneable_aero,
-        tuneable_diff=body.tuneable_diff,
+        tuneable_aero_front=body.tuneable_aero_front,
+        tuneable_aero_rear=body.tuneable_aero_rear,
+        diff_upgrade_type=body.diff_upgrade_type,
+        drivetrain=body.drivetrain,
+        final_drive=body.final_drive,
+        gear_1=body.gear_1,
+        gear_2=body.gear_2,
+        gear_3=body.gear_3,
+        gear_4=body.gear_4,
+        gear_5=body.gear_5,
+        gear_6=body.gear_6,
+        gear_7=body.gear_7,
+        gear_8=body.gear_8,
+        gear_9=body.gear_9,
+        gear_10=body.gear_10,
+        toe_front=body.toe_front,
+        toe_rear=body.toe_rear,
+        caster_front=body.caster_front,
+        ride_height_front=body.ride_height_front,
+        ride_height_rear=body.ride_height_rear,
+        downforce_front=body.downforce_front,
+        downforce_rear=body.downforce_rear,
+        brake_balance=body.brake_balance,
+        brake_pressure=body.brake_pressure,
+        diff_front_accel=body.diff_front_accel,
+        diff_front_decel=body.diff_front_decel,
+        diff_rear_accel=body.diff_rear_accel,
+        diff_rear_decel=body.diff_rear_decel,
+        diff_center_balance=body.diff_center_balance,
         tuning_goal=body.tuning_goal or "street_road",
     )
     return repo.create_setup(setup)
@@ -310,8 +378,35 @@ async def analyze_session(
         tuneable_springs=getattr(db_setup, "tuneable_springs", True),
         tuneable_arbs=getattr(db_setup, "tuneable_arbs", True),
         tuneable_dampers=getattr(db_setup, "tuneable_dampers", True),
-        tuneable_aero=getattr(db_setup, "tuneable_aero", True),
-        tuneable_diff=getattr(db_setup, "tuneable_diff", True),
+        tuneable_aero_front=getattr(db_setup, "tuneable_aero_front", True),
+        tuneable_aero_rear=getattr(db_setup, "tuneable_aero_rear", True),
+        diff_upgrade_type=getattr(db_setup, "diff_upgrade_type", "Race"),
+        drivetrain=getattr(db_setup, "drivetrain", "AWD"),
+        final_drive=getattr(db_setup, "final_drive", 3.50),
+        gear_1=getattr(db_setup, "gear_1", 2.89),
+        gear_2=getattr(db_setup, "gear_2", 1.99),
+        gear_3=getattr(db_setup, "gear_3", 1.49),
+        gear_4=getattr(db_setup, "gear_4", 1.16),
+        gear_5=getattr(db_setup, "gear_5", 0.94),
+        gear_6=getattr(db_setup, "gear_6", 0.78),
+        gear_7=getattr(db_setup, "gear_7", 0.65),
+        gear_8=getattr(db_setup, "gear_8", 0.55),
+        gear_9=getattr(db_setup, "gear_9", 0.48),
+        gear_10=getattr(db_setup, "gear_10", 0.42),
+        toe_front=getattr(db_setup, "toe_front", 0.0),
+        toe_rear=getattr(db_setup, "toe_rear", 0.0),
+        caster_front=getattr(db_setup, "caster_front", 5.0),
+        ride_height_front=getattr(db_setup, "ride_height_front", 5.0),
+        ride_height_rear=getattr(db_setup, "ride_height_rear", 5.0),
+        downforce_front=getattr(db_setup, "downforce_front", 100.0),
+        downforce_rear=getattr(db_setup, "downforce_rear", 150.0),
+        brake_balance=getattr(db_setup, "brake_balance", 50.0),
+        brake_pressure=getattr(db_setup, "brake_pressure", 100.0),
+        diff_front_accel=getattr(db_setup, "diff_front_accel", 25.0),
+        diff_front_decel=getattr(db_setup, "diff_front_decel", 0.0),
+        diff_rear_accel=getattr(db_setup, "diff_rear_accel", 50.0),
+        diff_rear_decel=getattr(db_setup, "diff_rear_decel", 15.0),
+        diff_center_balance=getattr(db_setup, "diff_center_balance", 65.0),
         tuning_goal=active_goal,
     )
 

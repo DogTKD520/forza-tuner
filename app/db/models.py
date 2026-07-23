@@ -104,8 +104,49 @@ class VehicleSetup(SQLModel, table=True):
     tuneable_springs: bool = Field(default=True)
     tuneable_arbs: bool = Field(default=True)
     tuneable_dampers: bool = Field(default=True)
-    tuneable_aero: bool = Field(default=True)
-    tuneable_diff: bool = Field(default=True)
+    tuneable_aero_front: bool = Field(default=True)
+    tuneable_aero_rear: bool = Field(default=True)
+    diff_upgrade_type: str = Field(default="Race")
+
+    # Drivetrain
+    drivetrain: str = Field(default="AWD")
+    
+    # Gearing
+    final_drive: float = Field(default=3.50)
+    gear_1: float = Field(default=2.89)
+    gear_2: float = Field(default=1.99)
+    gear_3: float = Field(default=1.49)
+    gear_4: float = Field(default=1.16)
+    gear_5: float = Field(default=0.94)
+    gear_6: float = Field(default=0.78)
+    gear_7: float = Field(default=0.65)
+    gear_8: float = Field(default=0.55)
+    gear_9: float = Field(default=0.48)
+    gear_10: float = Field(default=0.42)
+
+    # Alignment Extensions
+    toe_front: float = Field(default=0.0)
+    toe_rear: float = Field(default=0.0)
+    caster_front: float = Field(default=5.0)
+
+    # Ride Height
+    ride_height_front: float = Field(default=5.0)
+    ride_height_rear: float = Field(default=5.0)
+
+    # Aero Extensions
+    downforce_front: float = Field(default=100.0)
+    downforce_rear: float = Field(default=150.0)
+
+    # Brakes
+    brake_balance: float = Field(default=50.0)
+    brake_pressure: float = Field(default=100.0)
+
+    # Differential Extensions
+    diff_front_accel: float = Field(default=25.0)
+    diff_front_decel: float = Field(default=0.0)
+    diff_rear_accel: float = Field(default=50.0)
+    diff_rear_decel: float = Field(default=15.0)
+    diff_center_balance: float = Field(default=65.0)
 
     # Discipline / Goal
     tuning_goal: str = Field(default="street_road")

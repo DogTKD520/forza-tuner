@@ -6,7 +6,7 @@
  */
 
 import { connectWebSocket } from './websocket.js';
-import { pushSpeedSample } from './charts.js';
+import { pushTelemetrySample } from './charts.js';
 
 // ── DOM helpers ─────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -46,9 +46,12 @@ window.addEventListener('telemetry', (event) => {
   const frame = event.detail;
 
   // Gauges
-  const speedKph = frame.speed_kph ?? 0;
-  $('val-speed').textContent = speedKph.toFixed(0);
-  $('bar-speed').style.width = `${Math.min(speedKph / 300 * 100, 100)}%`;
+  const speedUnit = state.unit === 'metric' ? 'km/h' : 'mph';
+  const speedFactor = state.unit === 'metric' ? 1 : 0.621371;
+  const speedVal = (frame.speed_kph ?? 0) * speedFactor;
+  $('val-speed').textContent = speedVal.toFixed(0);
+  $('val-speed').nextElementSibling.textContent = speedUnit;
+  $('bar-speed').style.width = `${Math.min(speedVal / (state.unit === 'metric' ? 300 : 200) * 100, 100)}%`;
 
   const throttlePct = (frame.throttle ?? 0) * 100;
   $('val-throttle').textContent = throttlePct.toFixed(0);
@@ -58,12 +61,21 @@ window.addEventListener('telemetry', (event) => {
   $('val-brake').textContent = brakePct.toFixed(0);
   $('bar-brake').style.width = `${brakePct}%`;
 
-  const boostBar = Math.min(frame.boost ?? 0, 2);
-  $('val-boost').textContent = (frame.boost ?? 0).toFixed(2);
-  $('bar-boost').style.width = `${(boostBar / 2) * 100}%`;
+  const boostUnit = state.unit === 'metric' ? 'bar' : 'PSI';
+  const boostFactor = state.unit === 'metric' ? 1 : 14.5038;
+  const boostVal = (frame.boost ?? 0) * boostFactor;
+  const boostMax = state.unit === 'metric' ? 2 : 30;
+  $('val-boost').textContent = boostVal.toFixed(2);
+  $('val-boost').nextElementSibling.textContent = boostUnit;
+  $('bar-boost').style.width = `${Math.min(boostVal / boostMax * 100, 100)}%`;
 
-  // Speed chart
-  pushSpeedSample(speedKph);
+  $('val-rpm').textContent = (frame.rpm ?? 0).toFixed(0);
+  
+  const gear = frame.gear ?? 0;
+  $('val-gear').textContent = gear === 0 ? 'R' : gear;
+
+  // Telemetry chart
+  pushTelemetrySample(frame, state.unit);
 
   // Tyre heat
   if (frame.tire_temp) {
@@ -143,6 +155,56 @@ app.setGame = async function (game) {
   }
 };
 
+// ── Visibility & Conditional Logic ───────────────────────────
+app.updateVisibility = function () {
+  const dt = $('drivetrain').value;
+  $('diff-front-grp').style.display = (dt === 'FWD' || dt === 'AWD') ? 'block' : 'none';
+  $('diff-rear-grp').style.display = (dt === 'RWD' || dt === 'AWD') ? 'block' : 'none';
+  $('diff-center-grp').style.display = (dt === 'AWD') ? 'block' : 'none';
+
+  const aeroF = $('tuneable-aero-front').checked;
+  const aeroR = $('tuneable-aero-rear').checked;
+  $('grp-aero-front').style.display = aeroF ? 'block' : 'none';
+  $('grp-aero-rear').style.display = aeroR ? 'block' : 'none';
+};
+
+// ── Unit System (Metric / Imperial) ──────────────────────────
+state.unit = localStorage.getItem('forza_unit') || 'imperial';
+
+app.setUnit = function (unit) {
+  if (state.unit === unit) return;
+  state.unit = unit;
+  localStorage.setItem('forza_unit', unit);
+  
+  $('btn-unit-metric').classList.toggle('active', unit === 'metric');
+  $('btn-unit-imperial').classList.toggle('active', unit === 'imperial');
+  $('btn-unit-metric').setAttribute('aria-pressed', unit === 'metric');
+  $('btn-unit-imperial').setAttribute('aria-pressed', unit === 'imperial');
+
+  // Convert displayed static labels
+  document.querySelectorAll('.unit-hp').forEach(el => el.textContent = unit === 'metric' ? 'kW' : 'HP');
+  document.querySelectorAll('.unit-weight').forEach(el => el.textContent = unit === 'metric' ? 'kg' : 'lbs');
+  document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = unit === 'metric' ? 'bar' : 'PSI');
+  
+  // Convert existing values in inputs
+  const hpEl = $('hp');
+  const weightEl = $('weight');
+  const psiF = $('psi-front');
+  const psiR = $('psi-rear');
+  
+  if (unit === 'metric') {
+    if (hpEl) hpEl.value = Math.round(hpEl.value * 0.7457); // HP to kW
+    if (weightEl) weightEl.value = Math.round(weightEl.value * 0.453592); // lbs to kg
+    if (psiF) psiF.value = (psiF.value * 0.0689476).toFixed(2); // PSI to bar
+    if (psiR) psiR.value = (psiR.value * 0.0689476).toFixed(2);
+  } else {
+    if (hpEl) hpEl.value = Math.round(hpEl.value / 0.7457); // kW to HP
+    if (weightEl) weightEl.value = Math.round(weightEl.value / 0.453592); // kg to lbs
+    if (psiF) psiF.value = (psiF.value / 0.0689476).toFixed(1); // bar to PSI
+    if (psiR) psiR.value = (psiR.value / 0.0689476).toFixed(1);
+  }
+};
+
 // ── Tuning Goal selection ────────────────────────────────────
 app.selectGoal = function (goal) {
   $('tuning-goal').value = goal;
@@ -154,10 +216,22 @@ app.selectGoal = function (goal) {
 // ── Save vehicle setup ───────────────────────────────────────
 app.saveSetup = async function () {
   const name = $('setup-name').value.trim() || 'Default Setup';
+  let tire_pressure_front = parseFloat($('psi-front').value) || 30.0;
+  let tire_pressure_rear  = parseFloat($('psi-rear').value) || 30.0;
+  let hp                  = parseInt($('hp').value, 10) || 400;
+  let weight_lbs          = parseFloat($('weight').value) || 3000.0;
+
+  if (state.unit === 'metric') {
+    tire_pressure_front /= 0.0689476;
+    tire_pressure_rear /= 0.0689476;
+    hp /= 0.7457;
+    weight_lbs /= 0.453592;
+  }
+
   const body = {
     name,
-    tire_pressure_front: parseFloat($('psi-front').value) || 30.0,
-    tire_pressure_rear:  parseFloat($('psi-rear').value) || 30.0,
+    tire_pressure_front,
+    tire_pressure_rear,
     camber_front:        parseFloat($('camber-front').value) || -2.5,
     camber_rear:         parseFloat($('camber-rear').value) || -1.5,
     springs_front:       parseFloat($('springs-front').value) || 500.0,
@@ -169,8 +243,8 @@ app.saveSetup = async function () {
     rebound_front:       parseFloat($('rebound-front').value) || 5.0,
     rebound_rear:        parseFloat($('rebound-rear').value) || 5.0,
     pi_rating:           parseInt($('pi-rating').value, 10) || 700,
-    hp:                  parseInt($('hp').value, 10) || 400,
-    weight_lbs:          parseFloat($('weight-lbs').value) || 3000.0,
+    hp,
+    weight_lbs,
     front_weight_pct:    parseFloat($('front-weight-pct').value) || 52.0,
     aero_front:          parseFloat($('aero-front').value) || 100.0,
     aero_rear:           parseFloat($('aero-rear').value) || 150.0,
@@ -179,8 +253,35 @@ app.saveSetup = async function () {
     tuneable_springs:    $('tuneable-springs').checked,
     tuneable_arbs:       $('tuneable-arbs').checked,
     tuneable_dampers:    $('tuneable-dampers').checked,
-    tuneable_aero:       $('tuneable-aero').checked,
-    tuneable_diff:       $('tuneable-diff').checked,
+    tuneable_aero_front: $('tuneable-aero-front').checked,
+    tuneable_aero_rear:  $('tuneable-aero-rear').checked,
+    diff_upgrade_type:   $('diff-upgrade-type').value || 'Race',
+    drivetrain:          $('drivetrain').value || 'AWD',
+    final_drive:         parseFloat($('final-drive').value) || 3.50,
+    gear_1:              parseFloat($('gear-1').value) || 2.89,
+    gear_2:              parseFloat($('gear-2').value) || 1.99,
+    gear_3:              parseFloat($('gear-3').value) || 1.49,
+    gear_4:              parseFloat($('gear-4').value) || 1.16,
+    gear_5:              parseFloat($('gear-5').value) || 0.94,
+    gear_6:              parseFloat($('gear-6').value) || 0.78,
+    gear_7:              parseFloat($('gear-7').value) || 0.65,
+    gear_8:              parseFloat($('gear-8').value) || 0.55,
+    gear_9:              parseFloat($('gear-9').value) || 0.48,
+    gear_10:             parseFloat($('gear-10').value) || 0.42,
+    toe_front:           parseFloat($('toe-front').value) || 0.0,
+    toe_rear:            parseFloat($('toe-rear').value) || 0.0,
+    caster_front:        parseFloat($('caster-front').value) || 5.0,
+    ride_height_front:   parseFloat($('ride-height-front').value) || 5.0,
+    ride_height_rear:    parseFloat($('ride-height-rear').value) || 5.0,
+    downforce_front:     parseFloat($('downforce-front').value) || 100.0,
+    downforce_rear:      parseFloat($('downforce-rear').value) || 150.0,
+    brake_balance:       parseFloat($('brake-balance').value) || 50.0,
+    brake_pressure:      parseFloat($('brake-pressure').value) || 100.0,
+    diff_front_accel:    parseFloat($('diff-front-accel').value) || 25.0,
+    diff_front_decel:    parseFloat($('diff-front-decel').value) || 0.0,
+    diff_rear_accel:     parseFloat($('diff-rear-accel').value) || 50.0,
+    diff_rear_decel:     parseFloat($('diff-rear-decel').value) || 15.0,
+    diff_center_balance: parseFloat($('diff-center-balance').value) || 65.0,
     tuning_goal:         $('tuning-goal').value || 'street_road',
   };
 
@@ -411,6 +512,12 @@ function renderRecommendations(data) {
     $('btn-game-fm').classList.toggle('active', data.game === 'FM');
     $('btn-game-fh').classList.toggle('active', data.game === 'FH');
   } catch { /* continue offline */ }
+
+  // Initialise unit and visibility
+  const storedUnit = state.unit;
+  state.unit = null; // force update
+  app.setUnit(storedUnit);
+  app.updateVisibility();
 
   connectWebSocket();
 })();

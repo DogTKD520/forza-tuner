@@ -42,8 +42,49 @@ class SetupSnapshot:
     tuneable_springs: bool = True
     tuneable_arbs: bool = True
     tuneable_dampers: bool = True
-    tuneable_aero: bool = True
-    tuneable_diff: bool = True
+    tuneable_aero_front: bool = True
+    tuneable_aero_rear: bool = True
+    diff_upgrade_type: str = "Race"
+
+    # Drivetrain
+    drivetrain: str = "AWD"
+    
+    # Gearing
+    final_drive: float = 3.50
+    gear_1: float = 2.89
+    gear_2: float = 1.99
+    gear_3: float = 1.49
+    gear_4: float = 1.16
+    gear_5: float = 0.94
+    gear_6: float = 0.78
+    gear_7: float = 0.65
+    gear_8: float = 0.55
+    gear_9: float = 0.48
+    gear_10: float = 0.42
+
+    # Alignment Extensions
+    toe_front: float = 0.0
+    toe_rear: float = 0.0
+    caster_front: float = 5.0
+
+    # Ride Height
+    ride_height_front: float = 5.0
+    ride_height_rear: float = 5.0
+
+    # Aero Extensions
+    downforce_front: float = 100.0
+    downforce_rear: float = 150.0
+
+    # Brakes
+    brake_balance: float = 50.0
+    brake_pressure: float = 100.0
+
+    # Differential Extensions
+    diff_front_accel: float = 25.0
+    diff_front_decel: float = 0.0
+    diff_rear_accel: float = 50.0
+    diff_rear_decel: float = 15.0
+    diff_center_balance: float = 65.0
 
     # Goal / Discipline
     tuning_goal: str = "street_road"

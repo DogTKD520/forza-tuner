@@ -59,7 +59,19 @@ class TelemetryFrame:
     wheel_speed_rl: float
     wheel_speed_rr: float
 
+    # --- Tire Slip ---
+    tire_slip_ratio_fl: float
+    tire_slip_ratio_fr: float
+    tire_slip_ratio_rl: float
+    tire_slip_ratio_rr: float
+
+    tire_slip_angle_fl: float
+    tire_slip_angle_fr: float
+    tire_slip_angle_rl: float
+    tire_slip_angle_rr: float
+
     # --- Meta ---
+    gear: int
     is_race_on: bool
     game_type: str            # "FM" | "FH"
 
@@ -81,7 +93,8 @@ _SLED_STRUCT = struct.Struct(
     "<"
     "i"        # [0]  is_race_on          int32
     "I"        # [1]  timestamp_ms        uint32
-    "12f"      # [2-13] accel xyz, vel xyz, pos xyz, roll xyz   (12 floats)
+    "3f"       # [2-4] EngineMaxRpm, EngineIdleRpm, CurrentEngineRpm
+    "9f"       # [5-13] accel xyz, vel xyz, roll/pitch/yaw
     "f"        # [14] normalized_driving_line (ignored)
     "f"        # [15] normalized_ai_brake_difference (ignored)
     "f"        # [16] speed (m/s)
@@ -223,14 +236,14 @@ class ForzaPacketParser:
         return TelemetryFrame(
             is_race_on=bool(sled[0]),
             speed_mps=sled[16],
-            rpm=0.0,           # RPM not in standard Dash format; left for future
+            rpm=sled[4],
             boost=sled[23],
             throttle=sled[32] / 255.0,
             brake=sled[33] / 255.0,
             steer=sled[37] / 127.0,
-            accel_x=sled[2],
-            accel_y=sled[3],
-            accel_z=sled[4],
+            accel_x=sled[5],
+            accel_y=sled[6],
+            accel_z=sled[7],
             tire_temp_fl=tire_temps[0],
             tire_temp_fr=tire_temps[1],
             tire_temp_rl=tire_temps[2],
@@ -243,5 +256,14 @@ class ForzaPacketParser:
             wheel_speed_fr=dash[35],
             wheel_speed_rl=dash[36],
             wheel_speed_rr=dash[37],
+            tire_slip_ratio_fl=dash[30],
+            tire_slip_ratio_fr=dash[31],
+            tire_slip_ratio_rl=dash[32],
+            tire_slip_ratio_rr=dash[33],
+            tire_slip_angle_fl=dash[38],
+            tire_slip_angle_fr=dash[39],
+            tire_slip_angle_rl=dash[40],
+            tire_slip_angle_rr=dash[41],
+            gear=sled[36],
             game_type=game_type,
         )

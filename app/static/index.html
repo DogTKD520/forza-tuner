@@ -29,6 +29,12 @@
 
     <div class="header-spacer"></div>
 
+    <!-- Unit selector -->
+    <div class="game-toggle" role="group" aria-label="Unit profile selector" style="margin-right: 1rem;">
+      <button id="btn-unit-imperial" class="active" onclick="app.setUnit('imperial')" aria-pressed="true">Imperial</button>
+      <button id="btn-unit-metric" onclick="app.setUnit('metric')" aria-pressed="false">Metric</button>
+    </div>
+
     <!-- UDP / WebSocket status -->
     <div class="status-pill" id="ws-status" aria-live="polite">
       <div class="status-dot" id="ws-dot"></div>
@@ -85,6 +91,18 @@
           <div class="progress-bar"><div class="progress-bar-fill" id="bar-boost" style="width:0%;background:var(--amber)"></div></div>
         </div>
       </div>
+
+      <div class="gauge-card" id="gauge-rpm">
+        <div class="gauge-label">RPM</div>
+        <div class="gauge-value" id="val-rpm">—</div>
+        <div class="gauge-unit">rpm</div>
+      </div>
+
+      <div class="gauge-card" id="gauge-gear">
+        <div class="gauge-label">Gear</div>
+        <div class="gauge-value" id="val-gear" style="font-size:2rem;color:var(--accent)">—</div>
+        <div class="gauge-unit"></div>
+      </div>
     </div>
 
     <!-- ── Row 2 Left: Charts + Tire / Suspension ──────── -->
@@ -93,11 +111,11 @@
       <!-- Speed chart -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Speed History</span>
+          <span class="card-title">Live Telemetry (Speed, G-Force, Slip)</span>
           <span style="font-size:0.7rem;color:var(--text-muted)">Last 60s</span>
         </div>
-        <div class="chart-container">
-          <canvas id="chart-speed" aria-label="Speed over time" role="img"></canvas>
+        <div class="chart-container" style="height:250px">
+          <canvas id="chart-telemetry" aria-label="Telemetry over time" role="img"></canvas>
         </div>
       </div>
 
@@ -257,161 +275,232 @@
           </div>
 
 
-          <!-- Vehicle Specs & Parameters -->
-          <div class="section-divider-title">Car Specifications</div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="pi-rating">PI Rating</label>
-              <input type="number" id="pi-rating" value="700" min="100" max="999" />
+          <!-- 1. Car Specifications -->
+          <details class="accordion" open>
+            <summary class="accordion-header">Car Specifications</summary>
+            <div class="accordion-content">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="pi-rating">PI Rating</label>
+                  <input type="number" id="pi-rating" value="700" min="100" max="999" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="hp">Horsepower (<span class="unit-hp">HP</span>)</label>
+                  <input type="number" id="hp" value="400" min="50" max="2000" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="weight">Weight (<span class="unit-weight">lbs</span>)</label>
+                  <input type="number" id="weight" value="3000" min="500" max="10000" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="front-weight-pct">Front Weight %</label>
+                  <input type="number" id="front-weight-pct" step="0.5" value="52.0" min="30" max="70" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="drivetrain">Drivetrain</label>
+                <select id="drivetrain" class="form-select" onchange="app.updateVisibility()">
+                  <option value="AWD" selected>AWD</option>
+                  <option value="RWD">RWD</option>
+                  <option value="FWD">FWD</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-top:0.5rem">
+                <label class="form-label" for="tire-compound">Tire Compound</label>
+                <select id="tire-compound" class="form-select">
+                  <option value="Stock">Stock</option>
+                  <option value="Street">Street</option>
+                  <option value="Sport" selected>Sport</option>
+                  <option value="Race">Race</option>
+                  <option value="Slick">Slick</option>
+                  <option value="Drift">Drift</option>
+                  <option value="Rally">Rally</option>
+                  <option value="Off-Road">Off-Road</option>
+                </select>
+              </div>
+              <div class="toggle-checkbox-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="lock-tire-compound" />
+                  <span>Lock Tire Compound</span>
+                </label>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="hp">Horsepower (HP)</label>
-              <input type="number" id="hp" value="400" min="50" max="2000" />
-            </div>
-          </div>
+          </details>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="weight-lbs">Weight (lbs)</label>
-              <input type="number" id="weight-lbs" value="3000" min="500" max="10000" />
+          <!-- 2. Upgrades -->
+          <details class="accordion">
+            <summary class="accordion-header">Installed Upgrades</summary>
+            <div class="accordion-content">
+              <div class="checkbox-grid">
+                <label class="checkbox-label"><input type="checkbox" id="tuneable-springs" checked /><span>Race Springs</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="tuneable-arbs" checked /><span>Race ARBs</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="tuneable-dampers" checked /><span>Race Dampers</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="tuneable-aero-front" checked onchange="app.updateVisibility()" /><span>Front Race Aero</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="tuneable-aero-rear" checked onchange="app.updateVisibility()" /><span>Rear Race Aero</span></label>
+              </div>
+              <div class="form-group" style="margin-top:1rem">
+                <label class="form-label" for="diff-upgrade-type">Differential Type</label>
+                <select id="diff-upgrade-type" class="form-select">
+                  <option value="Stock">Stock</option>
+                  <option value="Street">Street</option>
+                  <option value="Sport">Sport</option>
+                  <option value="Race" selected>Race</option>
+                  <option value="Rally">Rally</option>
+                  <option value="Drift">Drift</option>
+                  <option value="Off-Road">Off-Road</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="front-weight-pct">Front Weight %</label>
-              <input type="number" id="front-weight-pct" step="0.5" value="52.0" min="30" max="70" />
-            </div>
-          </div>
+          </details>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="aero-front">Front Aero</label>
-              <input type="number" id="aero-front" value="100" min="0" max="1000" />
+          <!-- 3. Alignment -->
+          <details class="accordion">
+            <summary class="accordion-header">Alignment</summary>
+            <div class="accordion-content">
+              <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Tyre Pressure (<span class="unit-pressure">PSI</span>)</div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="psi-front">Front</label><input type="number" id="psi-front" step="0.5" value="30.0" /></div>
+                <div class="form-group"><label class="form-label" for="psi-rear">Rear</label><input type="number" id="psi-rear" step="0.5" value="30.0" /></div>
+              </div>
+              <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Camber (°)</div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="camber-front">Front</label><input type="number" id="camber-front" step="0.1" value="-2.5" /></div>
+                <div class="form-group"><label class="form-label" for="camber-rear">Rear</label><input type="number" id="camber-rear" step="0.1" value="-1.5" /></div>
+              </div>
+              <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Toe (°)</div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="toe-front">Front</label><input type="number" id="toe-front" step="0.1" value="0.0" /></div>
+                <div class="form-group"><label class="form-label" for="toe-rear">Rear</label><input type="number" id="toe-rear" step="0.1" value="0.0" /></div>
+              </div>
+              <div class="form-group" style="margin-top:0.25rem">
+                <label class="form-label" for="caster-front">Front Caster Angle (°)</label>
+                <input type="number" id="caster-front" step="0.1" value="5.0" />
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="aero-rear">Rear Aero</label>
-              <input type="number" id="aero-rear" value="150" min="0" max="1000" />
-            </div>
-          </div>
+          </details>
 
-          <div class="form-group">
-            <label class="form-label" for="tire-compound">Tire Compound</label>
-            <select id="tire-compound" class="form-select">
-              <option value="Stock">Stock</option>
-              <option value="Street">Street</option>
-              <option value="Sport" selected>Sport</option>
-              <option value="Race">Race</option>
-              <option value="Slick">Slick</option>
-              <option value="Drift">Drift</option>
-              <option value="Rally">Rally</option>
-              <option value="Off-Road">Off-Road</option>
-            </select>
-          </div>
+          <!-- 4. Springs & Height -->
+          <details class="accordion">
+            <summary class="accordion-header">Springs & Ride Height</summary>
+            <div class="accordion-content">
+              <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Springs</div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="springs-front">Front</label><input type="number" id="springs-front" step="1" value="500" /></div>
+                <div class="form-group"><label class="form-label" for="springs-rear">Rear</label><input type="number" id="springs-rear" step="1" value="450" /></div>
+              </div>
+              <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Ride Height</div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="ride-height-front">Front</label><input type="number" id="ride-height-front" step="0.1" value="5.0" /></div>
+                <div class="form-group"><label class="form-label" for="ride-height-rear">Rear</label><input type="number" id="ride-height-rear" step="0.1" value="5.0" /></div>
+              </div>
+            </div>
+          </details>
 
-          <div class="toggle-checkbox-row">
-            <label class="checkbox-label">
-              <input type="checkbox" id="lock-tire-compound" />
-              <span>Lock Tire Compound (No Tire Upgrade Suggestions)</span>
-            </label>
-          </div>
+          <!-- 5. Anti-Roll Bars -->
+          <details class="accordion">
+            <summary class="accordion-header">Anti-Roll Bars</summary>
+            <div class="accordion-content">
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="arb-front">Front</label><input type="number" id="arb-front" step="1" value="25" min="1" max="65" /></div>
+                <div class="form-group"><label class="form-label" for="arb-rear">Rear</label><input type="number" id="arb-rear" step="1" value="20" min="1" max="65" /></div>
+              </div>
+            </div>
+          </details>
 
-          <!-- Component Tuneability -->
-          <div class="section-divider-title">Installed Upgrades & Tuneability</div>
-          <div class="checkbox-grid">
-            <label class="checkbox-label">
-              <input type="checkbox" id="tuneable-springs" checked />
-              <span>Race Springs (Tuneable)</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="tuneable-arbs" checked />
-              <span>Race ARBs (Tuneable)</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="tuneable-dampers" checked />
-              <span>Race Dampers (Tuneable)</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="tuneable-aero" checked />
-              <span>Race Aero (Tuneable)</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="tuneable-diff" checked />
-              <span>Race Diff (Tuneable)</span>
-            </label>
-          </div>
+          <!-- 6. Dampers -->
+          <details class="accordion">
+            <summary class="accordion-header">Dampers</summary>
+            <div class="accordion-content">
+              <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Rebound Stiffness</div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="rebound-front">Front</label><input type="number" id="rebound-front" step="0.1" value="5.0" /></div>
+                <div class="form-group"><label class="form-label" for="rebound-rear">Rear</label><input type="number" id="rebound-rear" step="0.1" value="5.0" /></div>
+              </div>
+              <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Bump Stiffness</div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="bump-front">Front</label><input type="number" id="bump-front" step="0.1" value="5.0" /></div>
+                <div class="form-group"><label class="form-label" for="bump-rear">Rear</label><input type="number" id="bump-rear" step="0.1" value="5.0" /></div>
+              </div>
+            </div>
+          </details>
 
-          <div class="section-divider-title">Chassis Adjustments</div>
+          <!-- 7. Aero -->
+          <details class="accordion">
+            <summary class="accordion-header">Aerodynamics</summary>
+            <div class="accordion-content">
+              <div class="form-row">
+                <div class="form-group" id="grp-aero-front">
+                  <label class="form-label" for="downforce-front">Front Downforce</label>
+                  <input type="number" id="downforce-front" value="100" min="0" max="1000" />
+                </div>
+                <div class="form-group" id="grp-aero-rear">
+                  <label class="form-label" for="downforce-rear">Rear Downforce</label>
+                  <input type="number" id="downforce-rear" value="150" min="0" max="1000" />
+                </div>
+              </div>
+            </div>
+          </details>
 
-          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.5rem">Tyre Pressure (PSI)</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="psi-front">Front</label>
-              <input type="number" id="psi-front" step="0.5" value="30.0" />
+          <!-- 8. Brakes -->
+          <details class="accordion">
+            <summary class="accordion-header">Brakes</summary>
+            <div class="accordion-content">
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="brake-balance">Balance (%)</label><input type="number" id="brake-balance" step="1" value="50" min="0" max="100" /></div>
+                <div class="form-group"><label class="form-label" for="brake-pressure">Pressure (%)</label><input type="number" id="brake-pressure" step="1" value="100" min="0" max="200" /></div>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="psi-rear">Rear</label>
-              <input type="number" id="psi-rear" step="0.5" value="30.0" />
-            </div>
-          </div>
+          </details>
 
-          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Camber (°)</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="camber-front">Front</label>
-              <input type="number" id="camber-front" step="0.1" value="-2.5" />
+          <!-- 9. Differential -->
+          <details class="accordion">
+            <summary class="accordion-header">Differential</summary>
+            <div class="accordion-content">
+              <div id="diff-front-grp">
+                <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Front Differential (%)</div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label" for="diff-front-accel">Acceleration</label><input type="number" id="diff-front-accel" step="1" value="25" min="0" max="100" /></div>
+                  <div class="form-group"><label class="form-label" for="diff-front-decel">Deceleration</label><input type="number" id="diff-front-decel" step="1" value="0" min="0" max="100" /></div>
+                </div>
+              </div>
+              <div id="diff-rear-grp">
+                <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Rear Differential (%)</div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label" for="diff-rear-accel">Acceleration</label><input type="number" id="diff-rear-accel" step="1" value="50" min="0" max="100" /></div>
+                  <div class="form-group"><label class="form-label" for="diff-rear-decel">Deceleration</label><input type="number" id="diff-rear-decel" step="1" value="15" min="0" max="100" /></div>
+                </div>
+              </div>
+              <div id="diff-center-grp" class="form-group" style="margin-top:0.25rem">
+                <label class="form-label" for="diff-center-balance">Center Balance (%)</label>
+                <input type="number" id="diff-center-balance" step="1" value="65" min="0" max="100" />
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="camber-rear">Rear</label>
-              <input type="number" id="camber-rear" step="0.1" value="-1.5" />
-            </div>
-          </div>
+          </details>
 
-          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Springs</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="springs-front">Front</label>
-              <input type="number" id="springs-front" step="1" value="500" />
+          <!-- 10. Gearing -->
+          <details class="accordion">
+            <summary class="accordion-header">Gearing</summary>
+            <div class="accordion-content">
+              <div class="form-group" style="margin-bottom:1rem">
+                <label class="form-label" for="final-drive">Final Drive Ratio</label>
+                <input type="number" id="final-drive" step="0.01" value="3.50" />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+                <div class="form-group"><label class="form-label">1st Gear</label><input type="number" id="gear-1" step="0.01" value="2.89" /></div>
+                <div class="form-group"><label class="form-label">2nd Gear</label><input type="number" id="gear-2" step="0.01" value="1.99" /></div>
+                <div class="form-group"><label class="form-label">3rd Gear</label><input type="number" id="gear-3" step="0.01" value="1.49" /></div>
+                <div class="form-group"><label class="form-label">4th Gear</label><input type="number" id="gear-4" step="0.01" value="1.16" /></div>
+                <div class="form-group"><label class="form-label">5th Gear</label><input type="number" id="gear-5" step="0.01" value="0.94" /></div>
+                <div class="form-group"><label class="form-label">6th Gear</label><input type="number" id="gear-6" step="0.01" value="0.78" /></div>
+                <div class="form-group"><label class="form-label">7th Gear</label><input type="number" id="gear-7" step="0.01" value="0.65" /></div>
+                <div class="form-group"><label class="form-label">8th Gear</label><input type="number" id="gear-8" step="0.01" value="0.55" /></div>
+                <div class="form-group"><label class="form-label">9th Gear</label><input type="number" id="gear-9" step="0.01" value="0.48" /></div>
+                <div class="form-group"><label class="form-label">10th Gear</label><input type="number" id="gear-10" step="0.01" value="0.42" /></div>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="springs-rear">Rear</label>
-              <input type="number" id="springs-rear" step="1" value="450" />
-            </div>
-          </div>
-
-          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Anti-Roll Bars</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="arb-front">Front</label>
-              <input type="number" id="arb-front" step="1" value="25" min="1" max="65" />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="arb-rear">Rear</label>
-              <input type="number" id="arb-rear" step="1" value="20" min="1" max="65" />
-            </div>
-          </div>
-
-          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Bump Dampers</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="bump-front">Front</label>
-              <input type="number" id="bump-front" step="0.1" value="5.0" />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="bump-rear">Rear</label>
-              <input type="number" id="bump-rear" step="0.1" value="5.0" />
-            </div>
-          </div>
-
-          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Rebound Dampers</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="rebound-front">Front</label>
-              <input type="number" id="rebound-front" step="0.1" value="5.0" />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="rebound-rear">Rear</label>
-              <input type="number" id="rebound-rear" step="0.1" value="5.0" />
-            </div>
-          </div>
+          </details>
           </div>
         </form>
       </div>

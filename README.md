@@ -6,8 +6,9 @@ Real-time Forza Motorsport & Forza Horizon telemetry analysis dashboard with det
 
 ## Features
 
-- **Live Telemetry Dashboard** — 15 Hz WebSocket feed of speed, tyre temps, suspension travel, and live G-forces
-- **Game Profile Toggle** — Switch between Forza Motorsport (FM) and Forza Horizon (FH) packet formats at runtime
+- **Live Telemetry Dashboard** — 15 Hz WebSocket feed of speed, tyre temps, suspension travel, lateral/longitudinal G-forces, RPM, and tyre slip ratios
+- **Game Profile Toggle** — Switch between Forza Motorsport (FM) and Forza Horizon (FH) packet formats at runtime (with dynamic physics scaling)
+- **Comprehensive Tuning Form** — Full metric/imperial toggle with a 10-section accordion layout mirroring the exact in-game menu (including Dampers, Aero, Brakes, Differential, and Gearing)
 - **Tuning Goal Selector** — Tailor recommendations for **Balanced**, **Grip / Cornering**, **Drift**, or **Speed / Drag**
 - **Deterministic Physics Engine** — Instant, reproducible tuning recommendations derived from tyre temperature deltas, peak suspension travel, and lateral roll ratios
 - **Upgrade Detection & Hints** — Recommends upgrade parts (e.g. Race Springs, Race ARBs, or softer tyre compounds) when stock parts lack adjustability or overheat

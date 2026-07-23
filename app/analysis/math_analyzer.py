@@ -73,10 +73,23 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         active_goal = tuning_goal or getattr(setup, "tuning_goal", "street_road")
         goal_profile = self._goal_rules.get(active_goal, self._goal_rules.get("street_road", {}))
 
+        # Game-specific scaling
+        game_type = session_metrics.get("game_type", "FH")
+        fm_multiplier = 1.0
+        if game_type == "FM":
+            # FM uses stiffer/less forgiving physics than FH
+            fm_multiplier = 1.15
+            
         pressure_rules = {**self._pressure_rules, **goal_profile.get("tire_pressure", {})}
         camber_rules = {**self._camber_rules, **goal_profile.get("camber", {})}
         spring_rules = {**self._spring_rules, **goal_profile.get("spring_rate", {})}
         arb_rules = {**self._arb_rules, **goal_profile.get("anti_roll_bar", {})}
+        
+        # Apply scaling to tuning steps
+        pressure_rules["step_psi"] *= fm_multiplier
+        spring_rules["bottom_out_step_percent"] *= fm_multiplier
+        spring_rules["undertravel_step_percent"] *= fm_multiplier
+        arb_rules["step_percent"] *= fm_multiplier
 
         adjustments: list[Adjustment] = []
         corners = session_metrics.get("corners", {})

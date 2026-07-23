@@ -97,6 +97,7 @@ class SessionAggregator:
             "total_frames": self._frame_count,
             "avg_speed_mps": _safe_mean(self._speed_samples),
             "avg_lateral_g": _safe_mean(self._lateral_g_samples),
+            "game_type": self._latest_frame.game_type if self._latest_frame else "FH",
             "corners": {},
         }
 
@@ -137,10 +138,14 @@ class SessionAggregator:
         f = self._latest_frame
         return {
             "speed_kph": round(f.speed_mps * 3.6, 1),
+            "rpm": round(f.rpm, 0),
+            "gear": f.gear,
             "boost": round(f.boost, 2),
             "throttle": round(f.throttle, 2),
             "brake": round(f.brake, 2),
             "steer": round(f.steer, 2),
+            "lateral_g": round(f.accel_x / 9.81, 2),
+            "longitudinal_g": round(f.accel_y / 9.81, 2),
             "tire_temp": {
                 "fl": f.tire_temp_fl,
                 "fr": f.tire_temp_fr,
@@ -152,6 +157,18 @@ class SessionAggregator:
                 "fr": round(f.suspension_fr, 3),
                 "rl": round(f.suspension_rl, 3),
                 "rr": round(f.suspension_rr, 3),
+            },
+            "tire_slip_ratio": {
+                "fl": round(f.tire_slip_ratio_fl, 3),
+                "fr": round(f.tire_slip_ratio_fr, 3),
+                "rl": round(f.tire_slip_ratio_rl, 3),
+                "rr": round(f.tire_slip_ratio_rr, 3),
+            },
+            "tire_slip_angle": {
+                "fl": round(f.tire_slip_angle_fl, 3),
+                "fr": round(f.tire_slip_angle_fr, 3),
+                "rl": round(f.tire_slip_angle_rl, 3),
+                "rr": round(f.tire_slip_angle_rr, 3),
             },
             "game_type": f.game_type,
         }
