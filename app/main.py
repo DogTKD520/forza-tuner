@@ -49,13 +49,14 @@ async def lifespan(app: FastAPI):
     app.state.active_session_id = None
 
     # UDP listener — hands raw bytes to processor
-    transport = await start_udp_listener(
+    transport, worker_task = await start_udp_listener(
         host=settings.udp_host,
         port=settings.udp_port,
         processor=processor,
         game_type_getter=lambda: app.state.active_game,
     )
     app.state.udp_transport = transport
+    app.state.udp_worker_task = worker_task
 
     # Analysis strategy & queue
     strategy = OllamaAnalyzer() if settings.use_llm else MathBaselineAnalyzer()
@@ -75,6 +76,7 @@ async def lifespan(app: FastAPI):
 
     # --- Shutdown ---
     transport.close()
+    worker_task.cancel()
     await queue.stop()
     logger.info("Forza Tuner shut down cleanly.")
 

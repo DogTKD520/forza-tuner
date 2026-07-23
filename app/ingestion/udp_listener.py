@@ -146,9 +146,9 @@ async def start_udp_listener(
     port: int,
     processor: AbstractTelemetryProcessor,
     game_type_getter,
-) -> asyncio.BaseTransport:
+) -> tuple[asyncio.BaseTransport, asyncio.Task]:
     """
-    Bind a UDP socket, start the worker task, and return the transport handle.
+    Bind a UDP socket, start the worker task, and return the transport handle and task.
 
     Call this once at FastAPI startup.  The returned transport can be used to
     close the socket on shutdown.
@@ -163,11 +163,8 @@ async def start_udp_listener(
         lambda: _UDPListenerProtocol(queue, game_type_getter),
         local_addr=(host, port),
     )
-    
-    # Attach worker task to transport so it can be cancelled later if needed
-    transport.worker_task = worker_task
 
     logger.info("UDP telemetry listener started on %s:%d", host, port)
-    return transport
+    return transport, worker_task
 
 
