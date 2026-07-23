@@ -227,19 +227,19 @@ app.selectGoal = function (goal) {
   });
 };
 
-// ── Mobile Tab Navigation ────────────────────────────────────
+// ── Tab Navigation ───────────────────────────────────────────
 app.switchTab = function (tabId) {
   // Hide all tab contents
-  document.querySelectorAll('.mobile-tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   // Deactivate all tab buttons
-  document.querySelectorAll('.mobile-nav .nav-btn').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.app-nav .nav-btn').forEach(el => el.classList.remove('active'));
 
   // Activate selected tab content
   const tabContent = $(tabId);
   if (tabContent) tabContent.classList.add('active');
 
   // Activate selected tab button
-  const tabBtn = document.querySelector(`.mobile-nav .nav-btn[data-tab="${tabId}"]`);
+  const tabBtn = document.querySelector(`.app-nav .nav-btn[data-tab="${tabId}"]`);
   if (tabBtn) tabBtn.classList.add('active');
 };
 
