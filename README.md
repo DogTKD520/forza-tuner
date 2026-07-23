@@ -100,9 +100,9 @@ To stream telemetry into Forza Tuner, enable **Data Out** in your game settings:
 ## How to Use
 
 1. **Select Game Profile**: Toggle between **FM** (Forza Motorsport) and **FH** (Forza Horizon) in the top header.
-2. **Input Baseline Setup**: Fill in your car's current pressures, camber, springs, and ARB settings in the **Vehicle Setup** panel and click **Save**.
-3. **Choose Tuning Goal**: Select your target driving style (**Balanced**, **Grip / Cornering**, **Drift**, or **Speed / Drag**).
-4. **Record Session**: Click **▶ Start Recording** before taking your car out on track.
+2. **Input Baseline Setup**: Navigate to the **Setup** tab. Fill in your car's current pressures, camber, springs, and ARB settings, then click **Save**.
+3. **Choose Tuning Goal**: Navigate to the **Tuning** tab. Select your target driving style (**Balanced**, **Grip / Cornering**, **Drift**, or **Speed / Drag**).
+4. **Record Session**: While on the **Tuning** tab, click **▶ Start Recording** before taking your car out on track. You can monitor live data in the **Telemetry** tab while driving.
 5. **Analyze**: Drive a few laps, click **■ Stop**, then click **⚡ Analyse Session**. Instant recommendations will populate showing exact parameter adjustments and mathematical justifications.
 
 ---
