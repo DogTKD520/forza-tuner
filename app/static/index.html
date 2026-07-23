@@ -16,55 +16,57 @@
        HEADER
   ═══════════════════════════════════════════════════════ -->
   <header class="header">
-    <a href="/" class="header-logo" aria-label="Forza Tuner Home">
-      <div class="logo-icon">🏎</div>
-      <span>FORZA TUNER</span>
-    </a>
+    <div class="header-left">
+      <a href="/" class="header-logo" aria-label="Forza Tuner Home">
+        <div class="logo-icon">🏎</div>
+        <span>FORZA TUNER</span>
+      </a>
 
-    <!-- Game selector -->
-    <div class="game-toggle" role="group" aria-label="Game profile selector">
-      <button id="btn-game-fm" class="active" onclick="app.setGame('FM')" aria-pressed="true">FM</button>
-      <button id="btn-game-fh" onclick="app.setGame('FH')" aria-pressed="false">FH</button>
+      <!-- Game selector -->
+      <div class="game-toggle" role="group" aria-label="Game profile selector">
+        <button id="btn-game-fm" class="active" onclick="app.setGame('FM')" aria-pressed="true">FM</button>
+        <button id="btn-game-fh" onclick="app.setGame('FH')" aria-pressed="false">FH</button>
+      </div>
     </div>
 
-    <div class="header-spacer"></div>
+    <!-- ═══════════════════════════════════════════════════════
+         APP NAVIGATION (Desktop Center / Mobile Bottom)
+    ═══════════════════════════════════════════════════════ -->
+    <nav class="app-nav" aria-label="Main navigation">
+      <button class="nav-btn active" data-tab="tab-telemetry" onclick="app.switchTab('tab-telemetry')">
+        <div class="nav-icon">📊</div>
+        <span>Telemetry</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-setup" onclick="app.switchTab('tab-setup')">
+        <div class="nav-icon">⚙️</div>
+        <span>Setup</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-tuning" onclick="app.switchTab('tab-tuning')">
+        <div class="nav-icon">⚡</div>
+        <span>Tuning</span>
+      </button>
+    </nav>
 
-    <!-- Unit selector -->
-    <div class="game-toggle" role="group" aria-label="Unit profile selector" style="margin-right: 1rem;">
-      <button id="btn-unit-imperial" class="active" onclick="app.setUnit('imperial')" aria-pressed="true">Imperial</button>
-      <button id="btn-unit-metric" onclick="app.setUnit('metric')" aria-pressed="false">Metric</button>
-    </div>
+    <div class="header-right">
+      <!-- Unit selector -->
+      <div class="game-toggle" role="group" aria-label="Unit profile selector" style="margin-right: 1rem;">
+        <button id="btn-unit-imperial" class="active" onclick="app.setUnit('imperial')" aria-pressed="true">Imperial</button>
+        <button id="btn-unit-metric" onclick="app.setUnit('metric')" aria-pressed="false">Metric</button>
+      </div>
 
-    <!-- UDP / WebSocket status -->
-    <div class="status-pill" id="ws-status" aria-live="polite">
-      <div class="status-dot" id="ws-dot"></div>
-      <span id="ws-label">Connecting…</span>
-    </div>
+      <!-- UDP / WebSocket status -->
+      <div class="status-pill" id="ws-status" aria-live="polite">
+        <div class="status-dot" id="ws-dot"></div>
+        <span id="ws-label">Connecting…</span>
+      </div>
 
-    <!-- Session recording status -->
-    <div class="status-pill" id="session-status" aria-live="polite">
-      <div class="status-dot" id="rec-dot"></div>
-      <span id="rec-label">Idle</span>
+      <!-- Session recording status -->
+      <div class="status-pill" id="session-status" aria-live="polite">
+        <div class="status-dot" id="rec-dot"></div>
+        <span id="rec-label">Idle</span>
+      </div>
     </div>
   </header>
-
-  <!-- ═══════════════════════════════════════════════════════
-       APP NAVIGATION (Desktop Top / Mobile Bottom)
-  ═══════════════════════════════════════════════════════ -->
-  <nav class="app-nav" aria-label="Main navigation">
-    <button class="nav-btn active" data-tab="tab-telemetry" onclick="app.switchTab('tab-telemetry')">
-      <div class="nav-icon">📊</div>
-      <span>Telemetry</span>
-    </button>
-    <button class="nav-btn" data-tab="tab-tuning" onclick="app.switchTab('tab-tuning')">
-      <div class="nav-icon">⚡</div>
-      <span>Tuning</span>
-    </button>
-    <button class="nav-btn" data-tab="tab-setup" onclick="app.switchTab('tab-setup')">
-      <div class="nav-icon">⚙️</div>
-      <span>Setup</span>
-    </button>
-  </nav>
 
   <!-- ═══════════════════════════════════════════════════════
        MAIN CONTENT

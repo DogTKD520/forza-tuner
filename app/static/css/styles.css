@@ -73,14 +73,20 @@ h3 { font-size: 1rem; }
 .header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
   padding: 0 1.5rem;
-  background: var(--bg-surface);
+  background: rgba(19, 22, 29, 0.95);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
   backdrop-filter: blur(8px);
+}
+
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .header-logo {
@@ -573,15 +579,8 @@ input::placeholder { color: var(--text-muted); }
 /* ── App Navigation & Tabs ───────────────────────────────── */
 .app-nav {
   display: flex;
-  background: rgba(19, 22, 29, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
-  z-index: 99;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
-  padding: 0 1.5rem;
-  position: sticky;
-  top: 56px; /* Below header */
 }
 .app-nav .nav-btn {
   background: transparent;
@@ -590,7 +589,7 @@ input::placeholder { color: var(--text-muted); }
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 1rem 1.5rem;
+  padding: 1.1rem 1.25rem;
   cursor: pointer;
   transition: var(--transition);
   font-family: 'Rajdhani', sans-serif;
@@ -598,15 +597,30 @@ input::placeholder { color: var(--text-muted); }
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  border-bottom: 2px solid transparent;
+  position: relative;
+}
+.app-nav .nav-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: var(--transition);
 }
 .app-nav .nav-btn .nav-icon {
   font-size: 1.1rem;
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.app-nav .nav-btn:hover {
+  color: var(--text-primary);
+}
 .app-nav .nav-btn.active {
   color: var(--accent);
-  border-bottom-color: var(--accent);
+}
+.app-nav .nav-btn.active::after {
+  background: var(--accent);
 }
 .app-nav .nav-btn.active .nav-icon {
   transform: translateY(-1px);
@@ -682,6 +696,9 @@ input::placeholder { color: var(--text-muted); }
     gap: 4px;
     flex: 1;
     height: 100%;
+  }
+  .app-nav .nav-btn::after {
+    display: none;
   }
   
   .main-content { 
