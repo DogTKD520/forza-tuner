@@ -51,15 +51,33 @@
   <!-- ═══════════════════════════════════════════════════════
        MAIN GRID
   ═══════════════════════════════════════════════════════ -->
+  <!-- Mobile Nav (hidden on desktop) -->
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button class="nav-btn active" data-tab="tab-telemetry" onclick="app.switchTab('tab-telemetry')">
+      <div class="nav-icon">📊</div>
+      <span>Telemetry</span>
+    </button>
+    <button class="nav-btn" data-tab="tab-tuning" onclick="app.switchTab('tab-tuning')">
+      <div class="nav-icon">⚡</div>
+      <span>Tuning</span>
+    </button>
+    <button class="nav-btn" data-tab="tab-setup" onclick="app.switchTab('tab-setup')">
+      <div class="nav-icon">⚙️</div>
+      <span>Setup</span>
+    </button>
+  </nav>
+
   <main class="main-grid">
 
-    <!-- ── Row 1: Live gauges ──────────────────────────── -->
-    <div class="gauges-row">
+    <!-- ── TAB 1: TELEMETRY ────────────────────────────── -->
+    <div id="tab-telemetry" class="mobile-tab-content active">
+      <!-- ── Row 1: Live gauges ──────────────────────────── -->
+      <div class="gauges-row">
 
       <div class="gauge-card" id="gauge-speed">
         <div class="gauge-label">Speed</div>
         <div class="gauge-value" id="val-speed">—</div>
-        <div class="gauge-unit">km/h</div>
+        <div class="gauge-unit" id="unit-speed">km/h</div>
         <div class="progress-bar-wrap">
           <div class="progress-bar"><div class="progress-bar-fill" id="bar-speed" style="width:0%"></div></div>
         </div>
@@ -86,7 +104,7 @@
       <div class="gauge-card" id="gauge-boost">
         <div class="gauge-label">Boost</div>
         <div class="gauge-value amber" id="val-boost">—</div>
-        <div class="gauge-unit">bar</div>
+        <div class="gauge-unit" id="unit-boost">bar</div>
         <div class="progress-bar-wrap">
           <div class="progress-bar"><div class="progress-bar-fill" id="bar-boost" style="width:0%;background:var(--amber)"></div></div>
         </div>
@@ -105,8 +123,10 @@
       </div>
     </div>
 
-    <!-- ── Row 2 Left: Charts + Tire / Suspension ──────── -->
-    <div style="display:flex;flex-direction:column;gap:1rem;">
+      </div>
+
+      <!-- ── Row 2 Left: Charts + Tire / Suspension ──────── -->
+      <div class="telemetry-charts-group" style="display:flex;flex-direction:column;gap:1rem;">
 
       <!-- Speed chart -->
       <div class="card">
@@ -195,6 +215,12 @@
         </div>
       </div>
 
+        </div>
+      </div>
+    </div> <!-- /tab-telemetry -->
+
+    <!-- ── TAB 2: TUNING ───────────────────────────────── -->
+    <div id="tab-tuning" class="mobile-tab-content">
       <!-- ── Recommendations panel ──────────────────────── -->
       <div class="card" id="recommendations-card">
         <div class="card-header">
@@ -216,10 +242,12 @@
           </div>
         </div>
       </div>
-    </div>
+    </div> <!-- /tab-tuning -->
 
-    <!-- ── Row 2 Right: Sidebar ────────────────────────── -->
-    <aside class="sidebar">
+    <!-- ── TAB 3: SETUP ────────────────────────────────── -->
+    <div id="tab-setup" class="mobile-tab-content">
+      <!-- ── Row 2 Right: Sidebar ────────────────────────── -->
+      <aside class="sidebar">
 
       <!-- Session control -->
       <div class="card">
@@ -504,8 +532,8 @@
           </div>
         </form>
       </div>
-    </aside>
-
+      </aside>
+    </div> <!-- /tab-setup -->
 
   </main>
 </div>

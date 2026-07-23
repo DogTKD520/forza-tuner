@@ -195,6 +195,11 @@ app.setUnit = function (unit) {
   document.querySelectorAll('.unit-weight').forEach(el => el.textContent = unit === 'metric' ? 'kg' : 'lbs');
   document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = unit === 'metric' ? 'bar' : 'PSI');
   
+  const speedUnitEl = $('unit-speed');
+  if (speedUnitEl) speedUnitEl.textContent = unit === 'metric' ? 'km/h' : 'mph';
+  const boostUnitEl = $('unit-boost');
+  if (boostUnitEl) boostUnitEl.textContent = unit === 'metric' ? 'bar' : 'PSI';
+  
   // Convert existing values in inputs
   const hpEl = $('hp');
   const weightEl = $('weight');
@@ -220,6 +225,22 @@ app.selectGoal = function (goal) {
   document.querySelectorAll('.goal-badge').forEach((btn) => {
     btn.classList.toggle('active', btn.getAttribute('data-goal') === goal);
   });
+};
+
+// ── Mobile Tab Navigation ────────────────────────────────────
+app.switchTab = function (tabId) {
+  // Hide all tab contents
+  document.querySelectorAll('.mobile-tab-content').forEach(el => el.classList.remove('active'));
+  // Deactivate all tab buttons
+  document.querySelectorAll('.mobile-nav .nav-btn').forEach(el => el.classList.remove('active'));
+
+  // Activate selected tab content
+  const tabContent = $(tabId);
+  if (tabContent) tabContent.classList.add('active');
+
+  // Activate selected tab button
+  const tabBtn = document.querySelector(`.mobile-nav .nav-btn[data-tab="${tabId}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
 };
 
 // ── Save vehicle setup ───────────────────────────────────────

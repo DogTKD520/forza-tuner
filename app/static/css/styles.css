@@ -580,16 +580,110 @@ input::placeholder { color: var(--text-muted); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Mobile Navigation ───────────────────────────────────── */
+.mobile-nav {
+  display: none; /* hidden on desktop */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(19, 22, 29, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  z-index: 1000;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.mobile-nav .nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: 'Inter', sans-serif;
+  gap: 4px;
+}
+.mobile-nav .nav-btn span {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.mobile-nav .nav-btn .nav-icon {
+  font-size: 1.2rem;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mobile-nav .nav-btn.active {
+  color: var(--accent);
+}
+.mobile-nav .nav-btn.active .nav-icon {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 0 8px var(--accent-dim));
+}
+
+/* ── Mobile Tab Content ──────────────────────────────────── */
+/* Desktop default: wrappers don't affect CSS Grid layout */
+.mobile-tab-content {
+  display: contents;
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1100px) {
-  .main-grid { grid-template-columns: 1fr; }
-  .sidebar { grid-column: 1; }
-  .gauges-row { grid-template-columns: repeat(2, 1fr); }
+  /* Tablet / Smaller Desktop */
+  .main-grid { 
+    grid-template-columns: 1fr; 
+  }
+  .sidebar { 
+    grid-column: 1; 
+  }
+  .gauges-row { 
+    grid-template-columns: repeat(2, 1fr); 
+  }
 }
+
 @media (max-width: 600px) {
-  .gauges-row { grid-template-columns: 1fr 1fr; }
-  .header { padding: 0 1rem; }
-  .main-grid { padding: 0.75rem 1rem; }
+  /* Mobile Phones */
+  .mobile-nav { 
+    display: flex; 
+  }
+  .app-shell { 
+    padding-bottom: 64px; /* Space for mobile nav */ 
+  }
+  .main-grid { 
+    padding: 0.75rem 1rem; 
+    display: flex; /* Override grid, use flex for tab content */
+    flex-direction: column;
+  }
+  .gauges-row { 
+    display: grid;
+    grid-template-columns: 1fr 1fr; 
+  }
+  .header { 
+    padding: 0 1rem; 
+  }
+  
+  /* Show only active tab content */
+  .mobile-tab-content {
+    display: none;
+  }
+  .mobile-tab-content.active {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  /* Shrink gauges slightly */
+  .gauge-value {
+    font-size: 1.6rem;
+  }
 }
 
 /* ── Tuning Goal Badge Selector ─────────────────────────── */
