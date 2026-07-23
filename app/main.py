@@ -105,3 +105,9 @@ app.include_router(ws_router)
 
 # Serve the frontend dashboard from /static, with index.html at /
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host=settings.host, port=settings.port, reload=True)
+
