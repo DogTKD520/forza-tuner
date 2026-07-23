@@ -1,0 +1,155 @@
+"""
+SQLModel table definitions.
+
+Every entity that belongs to a user carries a `user_id` column.  In the MVP
+this defaults to "local_admin" via the repository layer.  When Cloudflare
+Access (or any other SSO) is added later, the identity header value is dropped
+in here without touching any other part of the code.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from typing import Optional
+
+from sqlmodel import Field, SQLModel
+
+
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# ---------------------------------------------------------------------------
+# User
+# ---------------------------------------------------------------------------
+
+class User(SQLModel, table=True):
+    __tablename__ = "users"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Vehicle
+# ---------------------------------------------------------------------------
+
+class Vehicle(SQLModel, table=True):
+    __tablename__ = "vehicles"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    make: str
+    model: str
+    year: int
+    car_class: str        # e.g. "S1", "A", "X"
+    performance_index: int = Field(alias="pi")
+    created_at: datetime = Field(default_factory=_utcnow)
+
+    class Config:
+        populate_by_name = True
+
+
+# ---------------------------------------------------------------------------
+# VehicleSetup
+# ---------------------------------------------------------------------------
+
+class VehicleSetup(SQLModel, table=True):
+    __tablename__ = "vehicle_setups"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    vehicle_id: Optional[int] = Field(default=None, foreign_key="vehicles.id")
+    user_id: str = Field(index=True)
+    name: str
+
+    # Tyres
+    tire_pressure_front: float     # PSI
+    tire_pressure_rear: float
+
+    # Alignment
+    camber_front: float            # degrees (negative = more camber)
+    camber_rear: float
+
+    # Springs (N/mm or game unit — we store whatever the game shows)
+    springs_front: float
+    springs_rear: float
+
+    # Anti-roll bars (1–65 game scale)
+    arb_front: float
+    arb_rear: float
+
+    # Dampers
+    bump_front: float
+    bump_rear: float
+    rebound_front: float
+    rebound_rear: float
+
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+# ---------------------------------------------------------------------------
+# TelemetrySession
+# ---------------------------------------------------------------------------
+
+class TelemetrySession(SQLModel, table=True):
+    __tablename__ = "telemetry_sessions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    vehicle_setup_id: Optional[int] = Field(default=None, foreign_key="vehicle_setups.id")
+    game_type: str                # "FM" | "FH"
+    status: str = "recording"    # "recording" | "completed" | "cancelled"
+    duration_seconds: Optional[float] = None
+
+    # JSON blob of aggregated metrics produced by SessionAggregator
+    summary_metrics_json: Optional[str] = None
+
+    started_at: datetime = Field(default_factory=_utcnow)
+    ended_at: Optional[datetime] = None
+
+    @property
+    def summary_metrics(self) -> Optional[dict]:
+        if self.summary_metrics_json is None:
+            return None
+        return json.loads(self.summary_metrics_json)
+
+    @summary_metrics.setter
+    def summary_metrics(self, value: dict) -> None:
+        self.summary_metrics_json = json.dumps(value)
+
+
+# ---------------------------------------------------------------------------
+# TuningRecommendation
+# ---------------------------------------------------------------------------
+
+class TuningRecommendation(SQLModel, table=True):
+    __tablename__ = "tuning_recommendations"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: int = Field(foreign_key="telemetry_sessions.id")
+    user_id: str = Field(index=True)
+    analyzer_type: str            # "math" | "ollama"
+
+    # Snapshot of the setup that was analysed (JSON)
+    input_setup_json: Optional[str] = None
+
+    # Recommendation output (JSON dict of deltas and explanations)
+    recommendations_json: Optional[str] = None
+
+    created_at: datetime = Field(default_factory=_utcnow)
+
+    @property
+    def recommendations(self) -> Optional[dict]:
+        if self.recommendations_json is None:
+            return None
+        return json.loads(self.recommendations_json)
+
+    @recommendations.setter
+    def recommendations(self, value: dict) -> None:
+        self.recommendations_json = json.dumps(value)

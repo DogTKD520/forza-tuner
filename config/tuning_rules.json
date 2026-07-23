@@ -1,0 +1,32 @@
+{
+  "tire_pressure": {
+    "description": "Adjust PSI based on center vs average-of-inner-outer temperature delta.",
+    "target_center_delta_celsius": 0,
+    "tolerance_celsius": 2,
+    "step_psi": 0.5,
+    "max_adjustment_psi": 3.0
+  },
+  "camber": {
+    "description": "Adjust camber so the inner edge runs slightly hotter than the outer under lateral load.",
+    "target_inner_outer_delta_celsius": 7.5,
+    "tolerance_celsius": 2.5,
+    "step_degrees": 0.2,
+    "max_adjustment_degrees": 2.0
+  },
+  "spring_rate": {
+    "description": "Adjust spring rate based on peak suspension travel utilisation.",
+    "target_travel_utilisation_min": 0.70,
+    "target_travel_utilisation_max": 0.90,
+    "bottom_out_threshold": 0.95,
+    "bottom_out_step_percent": 5,
+    "undertravel_step_percent": -5,
+    "max_adjustment_percent": 20
+  },
+  "anti_roll_bar": {
+    "description": "Balance ARB stiffness by comparing front vs rear peak roll displacement.",
+    "target_roll_balance_ratio": 1.0,
+    "tolerance_ratio": 0.15,
+    "step_percent": 5,
+    "max_adjustment_percent": 20
+  }
+}
