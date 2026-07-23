@@ -1,17 +1,19 @@
 # 🏎 Forza Tuner
 
-Real-time Forza Motorsport & Forza Horizon telemetry analysis dashboard with deterministic physics-based tuning recommendations and optional Ollama LLM AI assist.
+Real-time Forza Motorsport & Forza Horizon telemetry analysis dashboard with deterministic physics-based tuning recommendations, customizable tuning goals, and optional Ollama LLM AI assist.
 
 ---
 
 ## Features
 
-- **Live Telemetry Dashboard** — 15 Hz WebSocket feed of speed, tyre temps, suspension travel
+- **Live Telemetry Dashboard** — 15 Hz WebSocket feed of speed, tyre temps, suspension travel, and live G-forces
 - **Game Profile Toggle** — Switch between Forza Motorsport (FM) and Forza Horizon (FH) packet formats at runtime
-- **Deterministic Tuning Engine** — Instant, reproducible recommendations from tyre temperature deltas and suspension data (no LLM required)
-- **AI Assist (Optional)** — Pluggable Ollama LLM strategy with a GPU-safe async queue
+- **Tuning Goal Selector** — Tailor recommendations for **Balanced**, **Grip / Cornering**, **Drift**, or **Speed / Drag**
+- **Deterministic Physics Engine** — Instant, reproducible tuning recommendations derived from tyre temperature deltas, peak suspension travel, and lateral roll ratios
+- **Upgrade Detection & Hints** — Recommends upgrade parts (e.g. Race Springs, Race ARBs, or softer tyre compounds) when stock parts lack adjustability or overheat
+- **AI Assist (Optional)** — Pluggable Ollama LLM strategy with an async GPU worker queue
 - **Multi-Tenant Architecture** — Every entity scoped by `user_id` (defaults to `local_admin`); ready for Cloudflare Access SSO integration
-- **Containerized** — Single `docker compose up` to run
+- **Containerized & Portainer Ready** — Deploy easily via `docker compose` or Portainer stacks with configurable ports
 
 ---
 
@@ -19,152 +21,140 @@ Real-time Forza Motorsport & Forza Horizon telemetry analysis dashboard with det
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (recommended)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker on Linux (recommended)
 - Or Python 3.11+ for local development
 
-### With Docker (recommended)
+---
+
+### Deployment Options
+
+#### Option A: Docker Compose (Local / Server CLI)
 
 ```bash
-# 1. Copy and edit the environment file
+# 1. Clone the repository
+git clone https://github.com/DogTKD520/forza-tuner.git
+cd forza-tuner
+
+# 2. Copy and configure environment variables
 cp .env.example .env
 
-# 2. Build and start
-docker compose up --build
+# 3. Build and start containers
+docker compose up -d --build
 
-# 3. Open your browser
+# 4. Access the dashboard in your browser
 open http://localhost:8000
 ```
 
-### Local Development (Python 3.11+)
+#### Option B: Portainer / Server Stack Deployment
+
+When deploying via Portainer, create a new Stack, paste the repository URL or `docker-compose.yml`, and configure your environment variables:
+
+| Environment Variable | Recommended Value | Notes |
+|----------------------|-------------------|-------|
+| `PORT` | `8001` (or desired host port) | Host HTTP port mapping (`PORT:8000`) |
+| `UDP_PORT` | `5300` | Host UDP telemetry port mapping (`UDP_PORT:5300/udp`) |
+| `DEFAULT_GAME` | `FM` or `FH` | Initial active game profile |
+| `USE_LLM` | `False` | Set `True` if Ollama is accessible |
+
+> **Note on Port Mapping:** Host port `${PORT}` automatically forwards into container port `8000`. If you set `PORT=8001` in Portainer, access your dashboard at `http://<server-ip>:8001`.
+
+#### Option C: Local Development (Python 3.11+)
 
 ```bash
 # 1. Create and activate a virtual environment
 python -m venv .venv
-.venv\Scripts\activate      # Windows
-# source .venv/bin/activate  # macOS / Linux
+.venv\Scripts\activate       # Windows PowerShell
+# source .venv/bin/activate   # Linux / macOS
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Copy environment template
+# 3. Setup environment and data directory
 cp .env.example .env
-
-# 4. Create the data directory
 mkdir data
 
-# 5. Start the server
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# 4. Start server
+python -m app.main
 ```
 
 ---
 
-## Forza Configuration
+## Forza Game Setup (Data Out)
 
-In your Forza game's HUD & Gameplay settings, enable **Data Out** and point it to your machine's IP address on port **5300**.
+To stream telemetry into Forza Tuner, enable **Data Out** in your game settings:
+
+1. Open Forza Motorsport or Forza Horizon.
+2. Go to **Settings** → **HUD & Gameplay** → scroll to **Data Out**.
+3. Configure the following fields:
 
 | Setting | Value |
 |---------|-------|
-| Data Out | On |
-| Data Out IP Address | `<your machine's IP>` |
-| Data Out IP Port | `5300` |
-| Data Out Packet Format | **Car Dash** |
+| **Data Out** | `On` |
+| **Data Out IP Address** | Your server or PC local IP (e.g. `192.168.1.100`) |
+| **Data Out IP Port** | `5300` (must match `UDP_PORT` in `.env`) |
+| **Data Out Packet Format** | **`Car Dash`** |
 
 ---
 
-## Usage
+## How to Use
 
-1. **Select your game** using the FM / FH toggle in the header
-2. **Enter your current car setup** in the Vehicle Setup panel and click **Save**
-3. **Click Start Recording** before heading out on track
-4. **Drive your session** — telemetry data streams in live via UDP
-5. **Click Stop** when done, then **Analyse Session** for instant recommendations
-6. **Enable AI Assist** toggle before analysing to use the Ollama LLM (requires `USE_LLM=True` in `.env` and a running Ollama instance)
+1. **Select Game Profile**: Toggle between **FM** (Forza Motorsport) and **FH** (Forza Horizon) in the top header.
+2. **Input Baseline Setup**: Fill in your car's current pressures, camber, springs, and ARB settings in the **Vehicle Setup** panel and click **Save**.
+3. **Choose Tuning Goal**: Select your target driving style (**Balanced**, **Grip / Cornering**, **Drift**, or **Speed / Drag**).
+4. **Record Session**: Click **▶ Start Recording** before taking your car out on track.
+5. **Analyze**: Drive a few laps, click **■ Stop**, then click **⚡ Analyse Session**. Instant recommendations will populate showing exact parameter adjustments and mathematical justifications.
 
 ---
 
-## Configuration
+## Configuration Reference
 
-All options are set in `.env` (copy from `.env.example`):
+All settings can be customized in `.env` (copied from `.env.example`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8000` | HTTP server port |
-| `UDP_PORT` | `5300` | Forza telemetry UDP port |
-| `DEFAULT_GAME` | `FM` | Default game profile (`FM` or `FH`) |
-| `DEFAULT_USER_ID` | `local_admin` | User identity for all database records |
+| `PORT` | `8000` | Host HTTP dashboard port |
+| `UDP_PORT` | `5300` | Host UDP telemetry port |
+| `DEFAULT_GAME` | `FM` | Default game format (`FM` \| `FH`) |
+| `DEFAULT_USER_ID` | `local_admin` | Multi-tenant user identity scope |
 | `DATABASE_URL` | `sqlite:///./data/forza_tuner.db` | SQLite database path |
-| `WEBSOCKET_FPS` | `15` | Live telemetry WebSocket frame rate |
-| `USE_LLM` | `False` | Enable Ollama LLM analysis strategy |
+| `WEBSOCKET_FPS` | `15` | Live dashboard refresh rate (Hz) |
+| `USE_LLM` | `False` | Enable Ollama LLM strategy |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `llama3.2` | Model name for LLM analysis |
 
 ---
 
-## Tuning Rules
+## Physics Rules & Tuning Thresholds
 
-The `MathBaselineAnalyzer` rules and thresholds are in [`config/tuning_rules.json`](config/tuning_rules.json). Edit this file to adjust sensitivities without touching code:
+Tuning rule parameters are stored in [`config/tuning_rules.json`](config/tuning_rules.json). You can modify target temperature deltas and adjustment step sizes without touching application code:
 
-| Rule | Logic |
-|------|-------|
-| **Tyre Pressure** | Centre tyre temperature vs average of inner+outer edges |
-| **Camber** | Inner vs outer temperature differential under lateral load |
-| **Spring Rate** | Peak suspension travel utilisation (target: 70–90%) |
-| **Anti-Roll Bars** | Front vs rear average suspension travel ratio |
-
----
-
-## Project Structure
-
-```
-forza-tuner/
-├── app/
-│   ├── main.py              # FastAPI entry point + lifespan
-│   ├── config.py            # Pydantic Settings (all config in one place)
-│   ├── analysis/            # Strategy pattern analysis engine
-│   │   ├── base.py          # AnalysisStrategy ABC
-│   │   ├── math_analyzer.py # MathBaselineAnalyzer (deterministic)
-│   │   ├── ollama_analyzer.py # OllamaAnalyzer (LLM)
-│   │   └── gpu_queue.py     # Async single-concurrency task queue
-│   ├── api/
-│   │   ├── routes.py        # REST endpoints
-│   │   └── websocket.py     # Live telemetry WebSocket
-│   ├── db/
-│   │   ├── models.py        # SQLModel ORM tables
-│   │   ├── database.py      # Engine + session factory
-│   │   └── repositories.py  # user_id-scoped data access layer
-│   ├── ingestion/
-│   │   ├── base.py          # AbstractTelemetryProcessor interface
-│   │   ├── parser.py        # ForzaPacketParser (FM + FH byte layouts)
-│   │   ├── session_aggregator.py # Rolling session statistics
-│   │   └── udp_listener.py  # Async UDP socket → TelemetryProcessor
-│   └── static/              # Dashboard frontend (HTML/CSS/JS)
-├── config/
-│   └── tuning_rules.json    # Configurable analysis thresholds
-├── tests/                   # pytest test suite
-├── .env.example             # Environment template
-├── docker-compose.yml
-└── Dockerfile
-```
+| Component | Rule Logic |
+|-----------|------------|
+| **Tyre Pressure** | Compares center temperature against average of inner and outer edge temperatures to fix over/under-inflation. |
+| **Camber** | Measures inner vs outer edge temperature differential under lateral load. Adjusts negative camber magnitude toward goal target. |
+| **Spring Rates** | Monitors peak suspension travel. Recommends stiffening on bottom-out (`>= 95%`) or softening on under-travel (`< 70%`). |
+| **Anti-Roll Bars (ARBs)** | Evaluates front vs rear roll compression ratios to balance turn-in understeer vs oversteer. |
+| **Upgrades & Advice** | Warns when non-tunable stock parts prevent adjustments, or when sustained tyre overheating suggests softer compound upgrades within PI budget. |
 
 ---
 
 ## Running Tests
 
+Run the full pytest suite (31+ tests covering packet parsing, strategy analysis, tuning goals, and GPU queuing):
+
 ```bash
-pip install -r requirements.txt
-pytest
+pytest -v
 ```
 
 ---
 
 ## Future / SaaS Roadmap
 
-The architecture is explicitly designed to support these features **without refactoring**:
+The codebase is structured to allow future expansion **without refactoring**:
 
-- **Multi-tenant users** — replace `DEFAULT_USER_ID` with Cloudflare Access `CF-Access-Authenticated-User-Email` header in `repositories.py`
-- **Remote telemetry agents** — implement `AbstractTelemetryProcessor` with a WebSocket client instead of UDP listener
-- **GPU LLM analysis** — set `USE_LLM=True` and point `OLLAMA_HOST` at your Ollama instance
-- **Additional game support** — add a new layout to `ForzaPacketParser` without touching other modules
+- **SSO Authentication**: Replace `DEFAULT_USER_ID` in `repositories.py` with Cloudflare Access header (`CF-Access-Authenticated-User-Email`).
+- **Remote Telemetry Agents**: Implement `AbstractTelemetryProcessor` over WebSockets for client PCs running far from the server.
+- **GPU Queueing**: Enable `USE_LLM=True` to queue AI analysis requests sequentially without VRAM collisions.
 
 ---
 
