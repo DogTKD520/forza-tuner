@@ -47,6 +47,78 @@
     "S1": {"min_pi": 801, "max_pi": 900},
     "S2": {"min_pi": 901, "max_pi": 998},
     "X": {"min_pi": 999, "max_pi": 999}
+  },
+  "goals": {
+    "street_road": {
+      "name": "Street / Road Racing",
+      "description": "Balanced high-grip track & street performance.",
+      "spring_rate": {
+        "target_travel_utilisation_min": 0.70,
+        "target_travel_utilisation_max": 0.90
+      },
+      "camber": {
+        "target_inner_outer_delta_celsius": 7.5
+      },
+      "anti_roll_bar": {
+        "target_roll_balance_ratio": 1.0
+      }
+    },
+    "dirt_rally": {
+      "name": "Dirt / Rally",
+      "description": "Compliant suspension travel for loose surface & jump landing stability.",
+      "spring_rate": {
+        "target_travel_utilisation_min": 0.80,
+        "target_travel_utilisation_max": 0.95
+      },
+      "camber": {
+        "target_inner_outer_delta_celsius": 4.0
+      },
+      "anti_roll_bar": {
+        "target_roll_balance_ratio": 0.85
+      }
+    },
+    "off_road": {
+      "name": "Off-Road / Cross-Country",
+      "description": "Maximum suspension travel utilization and high impact absorption.",
+      "spring_rate": {
+        "target_travel_utilisation_min": 0.85,
+        "target_travel_utilisation_max": 0.98
+      },
+      "camber": {
+        "target_inner_outer_delta_celsius": 3.0
+      },
+      "anti_roll_bar": {
+        "target_roll_balance_ratio": 0.80
+      }
+    },
+    "drift": {
+      "name": "Drift",
+      "description": "Oversteer bias, aggressive front camber, and firm rear roll resistance for slide control.",
+      "spring_rate": {
+        "target_travel_utilisation_min": 0.65,
+        "target_travel_utilisation_max": 0.85
+      },
+      "camber": {
+        "target_inner_outer_delta_celsius": 12.0
+      },
+      "anti_roll_bar": {
+        "target_roll_balance_ratio": 1.30
+      }
+    },
+    "drag": {
+      "name": "Drag",
+      "description": "Straight-line acceleration, stiff rear squat resistance, and minimal front roll resistance.",
+      "spring_rate": {
+        "target_travel_utilisation_min": 0.50,
+        "target_travel_utilisation_max": 0.75
+      },
+      "camber": {
+        "target_inner_outer_delta_celsius": 1.0
+      },
+      "anti_roll_bar": {
+        "target_roll_balance_ratio": 1.50
+      }
+    }
   }
 }
 

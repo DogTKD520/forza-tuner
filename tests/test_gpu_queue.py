@@ -26,7 +26,7 @@ class _StubAnalyzer(AnalysisStrategy):
         self._delay = delay
 
     async def analyze(
-        self, session_metrics: dict, setup: SetupSnapshot
+        self, session_metrics: dict, setup: SetupSnapshot, tuning_goal: str = "street_road"
     ) -> TuningRecommendationResult:
         if self._delay:
             await asyncio.sleep(self._delay)

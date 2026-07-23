@@ -83,12 +83,16 @@ class SetupCreateRequest(BaseModel):
     tuneable_aero: bool = True
     tuneable_diff: bool = True
 
+    # Discipline / Goal
+    tuning_goal: str = "street_road"
+
 
 
 class AnalyzeRequest(BaseModel):
     session_id: int
     setup_id: int
     use_llm: bool = False
+    tuning_goal: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +180,20 @@ async def create_setup(
         bump_rear=body.bump_rear,
         rebound_front=body.rebound_front,
         rebound_rear=body.rebound_rear,
+        pi_rating=body.pi_rating,
+        hp=body.hp,
+        weight_lbs=body.weight_lbs,
+        front_weight_pct=body.front_weight_pct,
+        aero_front=body.aero_front,
+        aero_rear=body.aero_rear,
+        tire_compound=body.tire_compound,
+        lock_tire_compound=body.lock_tire_compound,
+        tuneable_springs=body.tuneable_springs,
+        tuneable_arbs=body.tuneable_arbs,
+        tuneable_dampers=body.tuneable_dampers,
+        tuneable_aero=body.tuneable_aero,
+        tuneable_diff=body.tuneable_diff,
+        tuning_goal=body.tuning_goal or "street_road",
     )
     return repo.create_setup(setup)
 
@@ -264,6 +282,10 @@ async def analyze_session(
     if not db_setup:
         raise HTTPException(status_code=404, detail="Setup not found")
 
+    active_goal = body.tuning_goal or getattr(db_setup, "tuning_goal", "street_road")
+    telemetry_session.tuning_goal = active_goal
+    session_repo.update_session(telemetry_session)
+
     setup_snapshot = SetupSnapshot(
         tire_pressure_front=db_setup.tire_pressure_front,
         tire_pressure_rear=db_setup.tire_pressure_rear,
@@ -290,8 +312,8 @@ async def analyze_session(
         tuneable_dampers=getattr(db_setup, "tuneable_dampers", True),
         tuneable_aero=getattr(db_setup, "tuneable_aero", True),
         tuneable_diff=getattr(db_setup, "tuneable_diff", True),
+        tuning_goal=active_goal,
     )
-
 
     use_llm = body.use_llm and settings.use_llm
 
@@ -299,11 +321,11 @@ async def analyze_session(
         # Enqueue for sequential GPU processing
         queue = request.app.state.analysis_queue
         task_id = await queue.enqueue(session_metrics, setup_snapshot)
-        return {"mode": "llm", "task_id": task_id, "status": TaskStatus.QUEUED}
+        return {"mode": "llm", "task_id": task_id, "status": TaskStatus.QUEUED, "tuning_goal": active_goal}
     else:
         # Math analyzer — instant synchronous response
         analyzer = MathBaselineAnalyzer()
-        result = await analyzer.analyze(session_metrics, setup_snapshot)
+        result = await analyzer.analyze(session_metrics, setup_snapshot, tuning_goal=active_goal)
 
         # Persist recommendation
         rec_repo = TuningRecommendationRepository(db)
@@ -322,6 +344,7 @@ async def analyze_session(
         return {
             "mode": "math",
             "analyzer_type": result.analyzer_type,
+            "tuning_goal": active_goal,
             "summary": result.summary,
             "adjustments": [adj.__dict__ for adj in result.adjustments],
         }

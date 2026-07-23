@@ -45,6 +45,9 @@ class SetupSnapshot:
     tuneable_aero: bool = True
     tuneable_diff: bool = True
 
+    # Goal / Discipline
+    tuning_goal: str = "street_road"
+
 
 @dataclass
 class Adjustment:
@@ -79,6 +82,7 @@ class AnalysisStrategy(ABC):
         self,
         session_metrics: dict[str, Any],
         setup: SetupSnapshot,
+        tuning_goal: str = "street_road",
     ) -> TuningRecommendationResult:
         """
         Analyse `session_metrics` (produced by SessionAggregator.get_summary())

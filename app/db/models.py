@@ -107,6 +107,9 @@ class VehicleSetup(SQLModel, table=True):
     tuneable_aero: bool = Field(default=True)
     tuneable_diff: bool = Field(default=True)
 
+    # Discipline / Goal
+    tuning_goal: str = Field(default="street_road")
+
     created_at: datetime = Field(default_factory=_utcnow)
 
 
@@ -123,6 +126,7 @@ class TelemetrySession(SQLModel, table=True):
     vehicle_setup_id: Optional[int] = Field(default=None, foreign_key="vehicle_setups.id")
     game_type: str                # "FM" | "FH"
     status: str = "recording"    # "recording" | "completed" | "cancelled"
+    tuning_goal: str = Field(default="street_road")
     duration_seconds: Optional[float] = None
 
     # JSON blob of aggregated metrics produced by SessionAggregator

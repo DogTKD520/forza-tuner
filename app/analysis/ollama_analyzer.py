@@ -54,6 +54,15 @@ Do not include any text outside the JSON object.
 """
 
 
+_GOAL_GUIDANCE = {
+    "street_road": "Target balanced high-grip track performance, uniform tire heat, roll stability, and 70-90% suspension travel utilization.",
+    "dirt_rally": "Prioritize suspension travel compliance (80-95%), softer ARBs for uneven terrain traction, and fast damper responsiveness over jumps.",
+    "off_road": "Prioritize maximum bump absorption (85-98% travel), low roll resistance on uneven terrain, and soft high-travel dampening.",
+    "drift": "Prioritize controlled oversteer bias: stiffer rear ARBs/springs, aggressive front negative camber for turn-in angle, and higher rear tire pressure for slide control.",
+    "drag": "Prioritize straight-line launch traction: stiff rear springs/dampers to prevent squat, neutral camber for maximum contact patch, and minimal front roll stiffness.",
+}
+
+
 class OllamaAnalyzer(AnalysisStrategy):
     """
     Sends session data to a locally running Ollama model for AI-assisted
@@ -73,8 +82,9 @@ class OllamaAnalyzer(AnalysisStrategy):
         self,
         session_metrics: dict[str, Any],
         setup: SetupSnapshot,
+        tuning_goal: str = "street_road",
     ) -> TuningRecommendationResult:
-        user_content = self._build_user_message(session_metrics, setup)
+        user_content = self._build_user_message(session_metrics, setup, tuning_goal)
 
         try:
             raw_response = await self._call_ollama(user_content)
@@ -124,11 +134,17 @@ class OllamaAnalyzer(AnalysisStrategy):
             return data["message"]["content"]
 
     def _build_user_message(
-        self, session_metrics: dict[str, Any], setup: SetupSnapshot
+        self, session_metrics: dict[str, Any], setup: SetupSnapshot, tuning_goal: str = "street_road"
     ) -> str:
+        active_goal = tuning_goal or getattr(setup, "tuning_goal", "street_road")
+        guidance = _GOAL_GUIDANCE.get(active_goal, _GOAL_GUIDANCE["street_road"])
+        setup_data = setup.__dict__.copy()
+        setup_data["tuning_goal"] = active_goal
         return (
+            f"TUNING GOAL: {active_goal.upper()}\n"
+            f"DISCIPLINE PHYSICS OBJECTIVE: {guidance}\n\n"
             "SESSION METRICS:\n"
             f"{json.dumps(session_metrics, indent=2)}\n\n"
             "CURRENT VEHICLE SETUP:\n"
-            f"{json.dumps(setup.__dict__, indent=2)}"
+            f"{json.dumps(setup_data, indent=2)}"
         )

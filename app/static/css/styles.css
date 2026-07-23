@@ -591,3 +591,34 @@ input::placeholder { color: var(--text-muted); }
   .header { padding: 0 1rem; }
   .main-grid { padding: 0.75rem 1rem; }
 }
+
+/* ── Tuning Goal Badge Selector ─────────────────────────── */
+.goal-badge-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.goal-badge {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 0.73rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.goal-badge:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.goal-badge.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}

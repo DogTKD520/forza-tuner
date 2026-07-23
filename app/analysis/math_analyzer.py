@@ -60,6 +60,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         self._camber_rules = rules["camber"]
         self._spring_rules = rules["spring_rate"]
         self._arb_rules = rules["anti_roll_bar"]
+        self._goal_rules = rules.get("goals", {})
         self._tire_compounds = rules.get("tire_compounds", {})
         self._pi_classes = rules.get("pi_classes", {})
 
@@ -67,24 +68,33 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         self,
         session_metrics: dict[str, Any],
         setup: SetupSnapshot,
+        tuning_goal: str = "street_road",
     ) -> TuningRecommendationResult:
+        active_goal = tuning_goal or getattr(setup, "tuning_goal", "street_road")
+        goal_profile = self._goal_rules.get(active_goal, self._goal_rules.get("street_road", {}))
+
+        pressure_rules = {**self._pressure_rules, **goal_profile.get("tire_pressure", {})}
+        camber_rules = {**self._camber_rules, **goal_profile.get("camber", {})}
+        spring_rules = {**self._spring_rules, **goal_profile.get("spring_rate", {})}
+        arb_rules = {**self._arb_rules, **goal_profile.get("anti_roll_bar", {})}
+
         adjustments: list[Adjustment] = []
         corners = session_metrics.get("corners", {})
 
         # --- Tyre pressure and camber (per corner) ---
-        self._analyze_front_axle(corners, setup, adjustments)
-        self._analyze_rear_axle(corners, setup, adjustments)
+        self._analyze_front_axle(corners, setup, adjustments, pressure_rules, camber_rules)
+        self._analyze_rear_axle(corners, setup, adjustments, pressure_rules, camber_rules)
 
         # --- Spring rates (front / rear averaged) ---
-        self._analyze_springs(corners, setup, adjustments)
+        self._analyze_springs(corners, setup, adjustments, spring_rules)
 
         # --- Anti-roll bars ---
-        self._analyze_arbs(session_metrics, setup, adjustments)
+        self._analyze_arbs(session_metrics, setup, adjustments, arb_rules)
 
         # --- Tire Compound & Thermals ---
         self._analyze_tire_compound(corners, setup, adjustments)
 
-        summary = self._build_summary(adjustments)
+        summary = self._build_summary(adjustments, active_goal)
         return TuningRecommendationResult(
             analyzer_type="math",
             adjustments=adjustments,
@@ -101,6 +111,8 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         corners: dict,
         setup: SetupSnapshot,
         adjustments: list[Adjustment],
+        pressure_rules: dict,
+        camber_rules: dict,
     ) -> None:
         fl = corners.get("fl")
         fr = corners.get("fr")
@@ -112,6 +124,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             pressure_adj = self._pressure_adjustment(
                 avg_inner, avg_center, avg_outer,
                 setup.tire_pressure_front, "tire_pressure_front",
+                pressure_rules,
             )
             if pressure_adj:
                 adjustments.append(pressure_adj)
@@ -119,6 +132,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             camber_adj = self._camber_adjustment(
                 avg_inner, avg_outer,
                 setup.camber_front, "camber_front",
+                camber_rules,
             )
             if camber_adj:
                 adjustments.append(camber_adj)
@@ -132,6 +146,8 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         corners: dict,
         setup: SetupSnapshot,
         adjustments: list[Adjustment],
+        pressure_rules: dict,
+        camber_rules: dict,
     ) -> None:
         rl = corners.get("rl")
         rr = corners.get("rr")
@@ -143,6 +159,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             pressure_adj = self._pressure_adjustment(
                 avg_inner, avg_center, avg_outer,
                 setup.tire_pressure_rear, "tire_pressure_rear",
+                pressure_rules,
             )
             if pressure_adj:
                 adjustments.append(pressure_adj)
@@ -150,6 +167,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             camber_adj = self._camber_adjustment(
                 avg_inner, avg_outer,
                 setup.camber_rear, "camber_rear",
+                camber_rules,
             )
             if camber_adj:
                 adjustments.append(camber_adj)
@@ -163,8 +181,9 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         corners: dict,
         setup: SetupSnapshot,
         adjustments: list[Adjustment],
+        spring_rules: dict,
     ) -> None:
-        rules = self._spring_rules
+        rules = spring_rules
 
         def _axle_spring_adj(
             corner_names: list[str],
@@ -242,8 +261,9 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         session_metrics: dict,
         setup: SetupSnapshot,
         adjustments: list[Adjustment],
+        arb_rules: dict,
     ) -> None:
-        rules = self._arb_rules
+        rules = arb_rules
         front_travel = session_metrics.get("front_avg_suspension_travel", 0.0)
         rear_travel = session_metrics.get("rear_avg_suspension_travel", 0.0)
 
@@ -253,14 +273,15 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         roll_ratio = front_travel / rear_travel
         tolerance = rules["tolerance_ratio"]
 
-        if abs(roll_ratio - rules["target_roll_balance_ratio"]) <= tolerance:
+        target_balance = rules["target_roll_balance_ratio"]
+        if abs(roll_ratio - target_balance) <= tolerance:
             return   # balanced enough
 
-        if roll_ratio > 1 + tolerance:
+        if roll_ratio > target_balance + tolerance:
             # Front rolling more → stiffen front ARB
             delta_pct = rules["step_percent"]
             reason = (
-                f"Front suspension compresses {roll_ratio:.2f}x more than rear. "
+                f"Front suspension compresses {roll_ratio:.2f}x relative to rear. "
                 "Stiffen front ARB."
             )
             param = "arb_front"
@@ -269,7 +290,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             # Rear rolling more → stiffen rear ARB
             delta_pct = rules["step_percent"]
             reason = (
-                f"Rear suspension compresses {1/roll_ratio:.2f}x more than front. "
+                f"Rear suspension compresses {1/roll_ratio:.2f}x relative to front. "
                 "Stiffen rear ARB."
             )
             param = "arb_rear"
@@ -391,8 +412,9 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         avg_outer: float,
         current_psi: float,
         param_name: str,
+        pressure_rules: dict,
     ) -> Adjustment | None:
-        rules = self._pressure_rules
+        rules = pressure_rules
         edge_avg = (avg_inner + avg_outer) / 2.0
         delta_to_edge = avg_center - edge_avg   # positive → over-inflated
 
@@ -429,8 +451,9 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         avg_outer: float,
         current_camber: float,
         param_name: str,
+        camber_rules: dict,
     ) -> Adjustment | None:
-        rules = self._camber_rules
+        rules = camber_rules
         inner_outer_delta = avg_inner - avg_outer   # positive = inner hotter than outer
 
         target = rules["target_inner_outer_delta_celsius"]
@@ -453,14 +476,14 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             # Too much camber: reduce magnitude (add positive value to negative camber)
             camber_change = +raw_change
             reason = (
-                f"Inner {deviation:.1f}°C hotter than target delta — too much camber. "
+                f"Inner {deviation:.1f}°C hotter than target delta ({target}°C) — too much camber. "
                 f"Reduce {param_name} magnitude by {raw_change:.1f}°."
             )
         else:
             # Not enough camber: increase magnitude (subtract from negative camber)
             camber_change = -raw_change
             reason = (
-                f"Inner {abs(deviation):.1f}°C cooler than target delta — not enough camber. "
+                f"Inner {abs(deviation):.1f}°C cooler than target delta ({target}°C) — not enough camber. "
                 f"Increase {param_name} magnitude by {raw_change:.1f}°."
             )
 
@@ -474,8 +497,10 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             reason=reason,
         )
 
-    def _build_summary(self, adjustments: list[Adjustment]) -> str:
+    def _build_summary(self, adjustments: list[Adjustment], active_goal: str = "street_road") -> str:
+        goal_info = self._goal_rules.get(active_goal, {})
+        goal_name = goal_info.get("name", active_goal.replace("_", " ").title())
         if not adjustments:
-            return "Setup looks well-balanced for this session. No changes recommended."
+            return f"[{goal_name}] Setup looks well-balanced for this session. No changes recommended."
         parts = [f"• {adj.reason}" for adj in adjustments]
-        return "Math analysis recommends the following changes:\n" + "\n".join(parts)
+        return f"[{goal_name}] Math analysis recommends the following changes:\n" + "\n".join(parts)

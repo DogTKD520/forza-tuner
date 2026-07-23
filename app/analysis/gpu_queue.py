@@ -105,7 +105,7 @@ class AnalysisQueue:
             logger.info("Processing analysis task %s", task.task_id)
             try:
                 task.result = await self._strategy.analyze(
-                    task.session_metrics, task.setup
+                    task.session_metrics, task.setup, tuning_goal=task.setup.tuning_goal
                 )
                 task.status = TaskStatus.COMPLETED
                 logger.info("Completed analysis task %s", task.task_id)

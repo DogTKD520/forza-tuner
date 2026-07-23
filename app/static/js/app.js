@@ -143,6 +143,14 @@ app.setGame = async function (game) {
   }
 };
 
+// ── Tuning Goal selection ────────────────────────────────────
+app.selectGoal = function (goal) {
+  $('tuning-goal').value = goal;
+  document.querySelectorAll('.goal-badge').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-goal') === goal);
+  });
+};
+
 // ── Save vehicle setup ───────────────────────────────────────
 app.saveSetup = async function () {
   const name = $('setup-name').value.trim() || 'Default Setup';
@@ -173,6 +181,7 @@ app.saveSetup = async function () {
     tuneable_dampers:    $('tuneable-dampers').checked,
     tuneable_aero:       $('tuneable-aero').checked,
     tuneable_diff:       $('tuneable-diff').checked,
+    tuning_goal:         $('tuning-goal').value || 'street_road',
   };
 
   try {
@@ -253,6 +262,7 @@ app.analyzeSession = async function () {
   }
 
   const useLlm = $('toggle-ai').checked;
+  const goal = $('tuning-goal').value || 'street_road';
   $('btn-analyze').disabled = true;
 
   try {
@@ -263,6 +273,7 @@ app.analyzeSession = async function () {
         session_id: state.activeSessionId,
         setup_id: state.activeSetupId,
         use_llm: useLlm,
+        tuning_goal: goal,
       }),
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
