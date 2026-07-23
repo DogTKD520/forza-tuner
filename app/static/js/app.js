@@ -148,18 +148,31 @@ app.saveSetup = async function () {
   const name = $('setup-name').value.trim() || 'Default Setup';
   const body = {
     name,
-    tire_pressure_front: parseFloat($('psi-front').value),
-    tire_pressure_rear:  parseFloat($('psi-rear').value),
-    camber_front:        parseFloat($('camber-front').value),
-    camber_rear:         parseFloat($('camber-rear').value),
-    springs_front:       parseFloat($('springs-front').value),
-    springs_rear:        parseFloat($('springs-rear').value),
-    arb_front:           parseFloat($('arb-front').value),
-    arb_rear:            parseFloat($('arb-rear').value),
-    bump_front:          parseFloat($('bump-front').value),
-    bump_rear:           parseFloat($('bump-rear').value),
-    rebound_front:       parseFloat($('rebound-front').value),
-    rebound_rear:        parseFloat($('rebound-rear').value),
+    tire_pressure_front: parseFloat($('psi-front').value) || 30.0,
+    tire_pressure_rear:  parseFloat($('psi-rear').value) || 30.0,
+    camber_front:        parseFloat($('camber-front').value) || -2.5,
+    camber_rear:         parseFloat($('camber-rear').value) || -1.5,
+    springs_front:       parseFloat($('springs-front').value) || 500.0,
+    springs_rear:        parseFloat($('springs-rear').value) || 450.0,
+    arb_front:           parseFloat($('arb-front').value) || 25.0,
+    arb_rear:            parseFloat($('arb-rear').value) || 20.0,
+    bump_front:          parseFloat($('bump-front').value) || 5.0,
+    bump_rear:           parseFloat($('bump-rear').value) || 5.0,
+    rebound_front:       parseFloat($('rebound-front').value) || 5.0,
+    rebound_rear:        parseFloat($('rebound-rear').value) || 5.0,
+    pi_rating:           parseInt($('pi-rating').value, 10) || 700,
+    hp:                  parseInt($('hp').value, 10) || 400,
+    weight_lbs:          parseFloat($('weight-lbs').value) || 3000.0,
+    front_weight_pct:    parseFloat($('front-weight-pct').value) || 52.0,
+    aero_front:          parseFloat($('aero-front').value) || 100.0,
+    aero_rear:           parseFloat($('aero-rear').value) || 150.0,
+    tire_compound:       $('tire-compound').value || 'Sport',
+    lock_tire_compound:  $('lock-tire-compound').checked,
+    tuneable_springs:    $('tuneable-springs').checked,
+    tuneable_arbs:       $('tuneable-arbs').checked,
+    tuneable_dampers:    $('tuneable-dampers').checked,
+    tuneable_aero:       $('tuneable-aero').checked,
+    tuneable_diff:       $('tuneable-diff').checked,
   };
 
   try {
@@ -256,7 +269,6 @@ app.analyzeSession = async function () {
     const data = await resp.json();
 
     if (data.mode === 'llm') {
-      // Show polling UI
       $('task-status-row').style.display = 'flex';
       $('task-status-label').textContent = 'Queued for GPU…';
       pollTaskStatus(data.task_id);
@@ -309,30 +321,51 @@ function renderRecommendations(data) {
   }
 
   const paramLabels = {
-    tire_pressure_front: 'Tyre Pressure — Front',
-    tire_pressure_rear:  'Tyre Pressure — Rear',
-    camber_front:        'Camber — Front',
-    camber_rear:         'Camber — Rear',
-    springs_front:       'Springs — Front',
-    springs_rear:        'Springs — Rear',
-    arb_front:           'ARB — Front',
-    arb_rear:            'ARB — Rear',
-    bump_front:          'Bump — Front',
-    bump_rear:           'Bump — Rear',
-    rebound_front:       'Rebound — Front',
-    rebound_rear:        'Rebound — Rear',
+    tire_pressure_front:   'Tyre Pressure — Front',
+    tire_pressure_rear:    'Tyre Pressure — Rear',
+    camber_front:          'Camber — Front',
+    camber_rear:           'Camber — Rear',
+    springs_front:         'Springs — Front',
+    springs_rear:          'Springs — Rear',
+    arb_front:             'ARB — Front',
+    arb_rear:              'ARB — Rear',
+    bump_front:            'Bump — Front',
+    bump_rear:             'Bump — Rear',
+    rebound_front:         'Rebound — Front',
+    rebound_rear:          'Rebound — Rear',
+    springs_upgrade:       '🛠️ Upgrade: Springs',
+    arb_upgrade:           '🛠️ Upgrade: Anti-Roll Bars',
+    tire_compound_upgrade: '🏎️ Upgrade: Tire Compound',
+    tire_compound_locked:  '🔒 Tire Compound (Locked)',
   };
 
   const rows = adjustments.map((adj) => {
-    const badgeClass = adj.delta > 0 ? 'positive' : adj.delta < 0 ? 'negative' : 'neutral';
-    const sign = adj.delta > 0 ? '+' : '';
+    let deltaBadgeHtml = '';
+    if (adj.is_upgrade_recommendation) {
+      deltaBadgeHtml = `<span class="delta-badge upgrade">UPGRADE</span>`;
+    } else if (adj.parameter === 'tire_compound_locked') {
+      deltaBadgeHtml = `<span class="delta-badge neutral">LOCKED</span>`;
+    } else {
+      const badgeClass = adj.delta > 0 ? 'positive' : adj.delta < 0 ? 'negative' : 'neutral';
+      const sign = adj.delta > 0 ? '+' : '';
+      deltaBadgeHtml = `<span class="delta-badge ${badgeClass}">${sign}${adj.delta}</span>`;
+    }
+
+    let warningHtml = '';
+    if (adj.pi_impact_warning) {
+      warningHtml = `<div class="pi-warning-banner">⚠️ ${adj.pi_impact_warning}</div>`;
+    }
+
     return `
       <tr>
-        <td>${paramLabels[adj.parameter] ?? adj.parameter}</td>
+        <td><strong>${paramLabels[adj.parameter] ?? adj.parameter}</strong></td>
         <td style="font-family:'Rajdhani',sans-serif;font-weight:600">${adj.current_value}</td>
         <td style="font-family:'Rajdhani',sans-serif;font-weight:600;color:var(--accent)">${adj.recommended_value}</td>
-        <td><span class="delta-badge ${badgeClass}">${sign}${adj.delta}</span></td>
-        <td style="color:var(--text-secondary);font-size:0.73rem">${adj.reason}</td>
+        <td>${deltaBadgeHtml}</td>
+        <td style="color:var(--text-secondary);font-size:0.73rem">
+          ${adj.reason}
+          ${warningHtml}
+        </td>
       </tr>`;
   }).join('');
 
@@ -342,11 +375,11 @@ function renderRecommendations(data) {
       <table class="rec-table">
         <thead>
           <tr>
-            <th>Parameter</th>
+            <th>Parameter / Part</th>
             <th>Current</th>
             <th>Recommended</th>
-            <th>Delta</th>
-            <th>Reason</th>
+            <th>Type / Delta</th>
+            <th>Reason & Notes</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -355,6 +388,7 @@ function renderRecommendations(data) {
 
   showToast('Analysis complete!', 'success');
 }
+
 
 // ── Boot ─────────────────────────────────────────────────────
 (async function boot() {

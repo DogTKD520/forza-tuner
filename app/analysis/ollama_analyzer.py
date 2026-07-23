@@ -80,8 +80,18 @@ class OllamaAnalyzer(AnalysisStrategy):
             raw_response = await self._call_ollama(user_content)
             parsed = json.loads(raw_response)
             adjustments = [
-                Adjustment(**adj) for adj in parsed.get("adjustments", [])
+                Adjustment(
+                    parameter=adj.get("parameter", ""),
+                    current_value=adj.get("current_value", 0),
+                    recommended_value=adj.get("recommended_value", 0),
+                    delta=adj.get("delta", 0.0),
+                    reason=adj.get("reason", ""),
+                    is_upgrade_recommendation=adj.get("is_upgrade_recommendation", False),
+                    pi_impact_warning=adj.get("pi_impact_warning"),
+                )
+                for adj in parsed.get("adjustments", [])
             ]
+
             return TuningRecommendationResult(
                 analyzer_type="ollama",
                 adjustments=adjustments,

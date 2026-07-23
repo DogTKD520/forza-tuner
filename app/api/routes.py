@@ -66,6 +66,24 @@ class SetupCreateRequest(BaseModel):
     rebound_front: float = 5.0
     rebound_rear: float = 5.0
 
+    # Vehicle specs & parameters
+    pi_rating: int = 700
+    hp: int = 400
+    weight_lbs: float = 3000.0
+    front_weight_pct: float = 52.0
+    aero_front: float = 100.0
+    aero_rear: float = 150.0
+    tire_compound: str = "Sport"
+    lock_tire_compound: bool = False
+
+    # Component tuneability flags
+    tuneable_springs: bool = True
+    tuneable_arbs: bool = True
+    tuneable_dampers: bool = True
+    tuneable_aero: bool = True
+    tuneable_diff: bool = True
+
+
 
 class AnalyzeRequest(BaseModel):
     session_id: int
@@ -259,7 +277,21 @@ async def analyze_session(
         bump_rear=db_setup.bump_rear,
         rebound_front=db_setup.rebound_front,
         rebound_rear=db_setup.rebound_rear,
+        pi_rating=getattr(db_setup, "pi_rating", 700),
+        hp=getattr(db_setup, "hp", 400),
+        weight_lbs=getattr(db_setup, "weight_lbs", 3000.0),
+        front_weight_pct=getattr(db_setup, "front_weight_pct", 52.0),
+        aero_front=getattr(db_setup, "aero_front", 100.0),
+        aero_rear=getattr(db_setup, "aero_rear", 150.0),
+        tire_compound=getattr(db_setup, "tire_compound", "Sport"),
+        lock_tire_compound=getattr(db_setup, "lock_tire_compound", False),
+        tuneable_springs=getattr(db_setup, "tuneable_springs", True),
+        tuneable_arbs=getattr(db_setup, "tuneable_arbs", True),
+        tuneable_dampers=getattr(db_setup, "tuneable_dampers", True),
+        tuneable_aero=getattr(db_setup, "tuneable_aero", True),
+        tuneable_diff=getattr(db_setup, "tuneable_diff", True),
     )
+
 
     use_llm = body.use_llm and settings.use_llm
 

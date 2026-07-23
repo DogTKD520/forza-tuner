@@ -244,7 +244,92 @@
             <input type="text" id="setup-name" placeholder="e.g. Laguna Seca Sprint" />
           </div>
 
-          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.75rem">Tyre Pressure (PSI)</div>
+
+          <!-- Vehicle Specs & Parameters -->
+          <div class="section-divider-title">Car Specifications</div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="pi-rating">PI Rating</label>
+              <input type="number" id="pi-rating" value="700" min="100" max="999" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="hp">Horsepower (HP)</label>
+              <input type="number" id="hp" value="400" min="50" max="2000" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="weight-lbs">Weight (lbs)</label>
+              <input type="number" id="weight-lbs" value="3000" min="500" max="10000" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="front-weight-pct">Front Weight %</label>
+              <input type="number" id="front-weight-pct" step="0.5" value="52.0" min="30" max="70" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="aero-front">Front Aero</label>
+              <input type="number" id="aero-front" value="100" min="0" max="1000" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="aero-rear">Rear Aero</label>
+              <input type="number" id="aero-rear" value="150" min="0" max="1000" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tire-compound">Tire Compound</label>
+            <select id="tire-compound" class="form-select">
+              <option value="Stock">Stock</option>
+              <option value="Street">Street</option>
+              <option value="Sport" selected>Sport</option>
+              <option value="Race">Race</option>
+              <option value="Slick">Slick</option>
+              <option value="Drift">Drift</option>
+              <option value="Rally">Rally</option>
+              <option value="Off-Road">Off-Road</option>
+            </select>
+          </div>
+
+          <div class="toggle-checkbox-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="lock-tire-compound" />
+              <span>Lock Tire Compound (No Tire Upgrade Suggestions)</span>
+            </label>
+          </div>
+
+          <!-- Component Tuneability -->
+          <div class="section-divider-title">Installed Upgrades & Tuneability</div>
+          <div class="checkbox-grid">
+            <label class="checkbox-label">
+              <input type="checkbox" id="tuneable-springs" checked />
+              <span>Race Springs (Tuneable)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="tuneable-arbs" checked />
+              <span>Race ARBs (Tuneable)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="tuneable-dampers" checked />
+              <span>Race Dampers (Tuneable)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="tuneable-aero" checked />
+              <span>Race Aero (Tuneable)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="tuneable-diff" checked />
+              <span>Race Diff (Tuneable)</span>
+            </label>
+          </div>
+
+          <div class="section-divider-title">Chassis Adjustments</div>
+
+          <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.5rem">Tyre Pressure (PSI)</div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="psi-front">Front</label>
@@ -315,9 +400,11 @@
               <input type="number" id="rebound-rear" step="0.1" value="5.0" />
             </div>
           </div>
+          </div>
         </form>
       </div>
     </aside>
+
 
   </main>
 </div>

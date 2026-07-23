@@ -90,7 +90,25 @@ class VehicleSetup(SQLModel, table=True):
     rebound_front: float
     rebound_rear: float
 
+    # Vehicle specs & parameters
+    pi_rating: int = Field(default=700)
+    hp: int = Field(default=400)
+    weight_lbs: float = Field(default=3000.0)
+    front_weight_pct: float = Field(default=52.0)
+    aero_front: float = Field(default=100.0)
+    aero_rear: float = Field(default=150.0)
+    tire_compound: str = Field(default="Sport")
+    lock_tire_compound: bool = Field(default=False)
+
+    # Component tuneability flags (installed upgrades)
+    tuneable_springs: bool = Field(default=True)
+    tuneable_arbs: bool = Field(default=True)
+    tuneable_dampers: bool = Field(default=True)
+    tuneable_aero: bool = Field(default=True)
+    tuneable_diff: bool = Field(default=True)
+
     created_at: datetime = Field(default_factory=_utcnow)
+
 
 
 # ---------------------------------------------------------------------------

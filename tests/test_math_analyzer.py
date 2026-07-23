@@ -189,3 +189,70 @@ class TestMathBaselineAnalyzer:
         metrics = _balanced_metrics()
         result = await self.analyzer.analyze(metrics, _default_setup())
         assert result.analyzer_type == "math"
+
+    @pytest.mark.asyncio
+    async def test_nontuneable_arbs_suggests_upgrade(self):
+        """When ARBs are non-tuneable and unbalanced, suggest installing Race ARBs."""
+        metrics = _balanced_metrics()
+        metrics["front_avg_suspension_travel"] = 0.85
+        metrics["rear_avg_suspension_travel"] = 0.50
+        setup = _default_setup(tuneable_arbs=False)
+        result = await self.analyzer.analyze(metrics, setup)
+        upgrade_adj = next(
+            (a for a in result.adjustments if a.parameter == "arb_upgrade"), None
+        )
+        assert upgrade_adj is not None
+        assert upgrade_adj.is_upgrade_recommendation is True
+        assert "Install Race Anti-Roll Bars" in upgrade_adj.reason
+
+    @pytest.mark.asyncio
+    async def test_nontuneable_springs_suggests_upgrade(self):
+        """When springs are non-tuneable and bottoming out, suggest installing Race Springs."""
+        soft_corner = _make_corner(80.0, 80.0, 80.0, peak_travel=0.98, bottom_out_ratio=0.15)
+        metrics = _balanced_metrics(fl=soft_corner, fr=soft_corner)
+        setup = _default_setup(tuneable_springs=False)
+        result = await self.analyzer.analyze(metrics, setup)
+        upgrade_adj = next(
+            (a for a in result.adjustments if a.parameter == "springs_upgrade"), None
+        )
+        assert upgrade_adj is not None
+        assert upgrade_adj.is_upgrade_recommendation is True
+        assert "Install Race Springs" in upgrade_adj.reason
+
+    @pytest.mark.asyncio
+    async def test_overheating_tires_unlocked_recommends_compound_and_pi_warning(self):
+        """Hot tires with unlocked compound recommend compound upgrade + PI warning if near boundary."""
+        hot_corner = _make_corner(105.0, 105.0, 105.0)
+        metrics = _balanced_metrics(
+            fl=hot_corner, fr=hot_corner, rl=hot_corner, rr=hot_corner
+        )
+        setup = _default_setup(tire_compound="Sport", lock_tire_compound=False, pi_rating=790)
+        result = await self.analyzer.analyze(metrics, setup)
+        compound_adj = next(
+            (a for a in result.adjustments if a.parameter == "tire_compound_upgrade"), None
+        )
+        assert compound_adj is not None
+        assert compound_adj.is_upgrade_recommendation is True
+        assert compound_adj.recommended_value == "Race"
+        assert compound_adj.pi_impact_warning is not None
+        assert "may push car (790 PI) into next class" in compound_adj.pi_impact_warning
+
+    @pytest.mark.asyncio
+    async def test_overheating_tires_locked_does_not_recommend_upgrade(self):
+        """Hot tires with locked compound do not recommend upgrading tire compound."""
+        hot_corner = _make_corner(105.0, 105.0, 105.0)
+        metrics = _balanced_metrics(
+            fl=hot_corner, fr=hot_corner, rl=hot_corner, rr=hot_corner
+        )
+        setup = _default_setup(tire_compound="Sport", lock_tire_compound=True)
+        result = await self.analyzer.analyze(metrics, setup)
+        upgrade_adj = next(
+            (a for a in result.adjustments if a.parameter == "tire_compound_upgrade"), None
+        )
+        assert upgrade_adj is None, "Should not recommend compound upgrade when tire is locked"
+        locked_adj = next(
+            (a for a in result.adjustments if a.parameter == "tire_compound_locked"), None
+        )
+        assert locked_adj is not None
+        assert "locked in setup" in locked_adj.reason
+

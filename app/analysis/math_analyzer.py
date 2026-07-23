@@ -60,6 +60,8 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         self._camber_rules = rules["camber"]
         self._spring_rules = rules["spring_rate"]
         self._arb_rules = rules["anti_roll_bar"]
+        self._tire_compounds = rules.get("tire_compounds", {})
+        self._pi_classes = rules.get("pi_classes", {})
 
     async def analyze(
         self,
@@ -79,12 +81,16 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         # --- Anti-roll bars ---
         self._analyze_arbs(session_metrics, setup, adjustments)
 
+        # --- Tire Compound & Thermals ---
+        self._analyze_tire_compound(corners, setup, adjustments)
+
         summary = self._build_summary(adjustments)
         return TuningRecommendationResult(
             analyzer_type="math",
             adjustments=adjustments,
             summary=summary,
         )
+
 
     # ------------------------------------------------------------------
     # Pressure & Camber — Front axle
@@ -207,10 +213,25 @@ class MathBaselineAnalyzer(AnalysisStrategy):
 
         front_adj = _axle_spring_adj(["fl", "fr"], setup.springs_front, "springs_front")
         rear_adj = _axle_spring_adj(["rl", "rr"], setup.springs_rear, "springs_rear")
-        if front_adj:
-            adjustments.append(front_adj)
-        if rear_adj:
-            adjustments.append(rear_adj)
+
+        if not setup.tuneable_springs:
+            if front_adj or rear_adj:
+                reason_text = (front_adj.reason if front_adj else "") + (" " + rear_adj.reason if rear_adj else "")
+                adjustments.append(
+                    Adjustment(
+                        parameter="springs_upgrade",
+                        current_value="Stock Springs",
+                        recommended_value="Race Springs",
+                        delta=0.0,
+                        reason=f"Spring adjustments needed ({reason_text.strip()}), but springs are non-tuneable. Install Race Springs to adjust stiffness.",
+                        is_upgrade_recommendation=True,
+                    )
+                )
+        else:
+            if front_adj:
+                adjustments.append(front_adj)
+            if rear_adj:
+                adjustments.append(rear_adj)
 
     # ------------------------------------------------------------------
     # Anti-roll bars
@@ -254,6 +275,19 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             param = "arb_rear"
             current = setup.arb_rear
 
+        if not setup.tuneable_arbs:
+            adjustments.append(
+                Adjustment(
+                    parameter="arb_upgrade",
+                    current_value="Stock ARBs",
+                    recommended_value="Race ARBs",
+                    delta=0.0,
+                    reason=f"Roll balance adjustment required ({reason}), but Anti-Roll Bars are non-tuneable. Install Race Anti-Roll Bars.",
+                    is_upgrade_recommendation=True,
+                )
+            )
+            return
+
         delta = current * (delta_pct / 100.0)
         recommended = _clamp(
             current + delta,
@@ -269,6 +303,82 @@ class MathBaselineAnalyzer(AnalysisStrategy):
                 reason=reason,
             )
         )
+
+    # ------------------------------------------------------------------
+    # Tire Compound & Thermal Analysis
+    # ------------------------------------------------------------------
+
+    def _analyze_tire_compound(
+        self,
+        corners: dict,
+        setup: SetupSnapshot,
+        adjustments: list[Adjustment],
+    ) -> None:
+        if not corners or not self._tire_compounds:
+            return
+
+        compound_name = setup.tire_compound or "Sport"
+        compound_info = self._tire_compounds.get(compound_name)
+        if not compound_info:
+            return
+
+        all_temps = []
+        for corner_name, data in corners.items():
+            if isinstance(data, dict):
+                inner = data.get("avg_inner_temp", 0)
+                center = data.get("avg_center_temp", 0)
+                outer = data.get("avg_outer_temp", 0)
+                all_temps.extend([inner, center, outer])
+
+        if not all_temps:
+            return
+
+        avg_tire_temp = sum(all_temps) / len(all_temps)
+        min_ideal = compound_info.get("ideal_temp_min_c", 80)
+        max_ideal = compound_info.get("ideal_temp_max_c", 100)
+        current_tier = compound_info.get("grip_tier", 3)
+
+        if avg_tire_temp > max_ideal:
+            if setup.lock_tire_compound:
+                adjustments.append(
+                    Adjustment(
+                        parameter="tire_compound_locked",
+                        current_value=compound_name,
+                        recommended_value=compound_name,
+                        delta=0.0,
+                        reason=f"Average tyre temperature ({avg_tire_temp:.1f}°C) exceeds optimal range ({min_ideal}–{max_ideal}°C) for {compound_name} compound. Tire compound upgrade is locked in setup.",
+                        is_upgrade_recommendation=False,
+                    )
+                )
+            else:
+                next_compound = None
+                for c_name, c_info in self._tire_compounds.items():
+                    if c_info.get("grip_tier", 0) == current_tier + 1:
+                        next_compound = c_name
+                        break
+                if not next_compound:
+                    next_compound = "Race" if compound_name != "Race" else "Slick"
+
+                pi_warning = None
+                pi_rating = setup.pi_rating
+                for c_label, bounds in self._pi_classes.items():
+                    if bounds["min_pi"] <= pi_rating <= bounds["max_pi"]:
+                        if bounds["max_pi"] - pi_rating < 25:
+                            pi_warning = f"Upgrading to {next_compound} compound may push car ({pi_rating} PI) into next class (max {c_label} is {bounds['max_pi']} PI)."
+                        break
+
+                adjustments.append(
+                    Adjustment(
+                        parameter="tire_compound_upgrade",
+                        current_value=compound_name,
+                        recommended_value=next_compound,
+                        delta=0.0,
+                        reason=f"Average tyre temp ({avg_tire_temp:.1f}°C) is above {compound_name} optimal limit ({max_ideal}°C). Recommend upgrading to {next_compound} compound for better thermal capacity and grip.",
+                        is_upgrade_recommendation=True,
+                        pi_impact_warning=pi_warning,
+                    )
+                )
+
 
     # ------------------------------------------------------------------
     # Helpers

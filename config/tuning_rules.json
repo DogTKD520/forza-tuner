@@ -28,5 +28,25 @@
     "tolerance_ratio": 0.15,
     "step_percent": 5,
     "max_adjustment_percent": 20
+  },
+  "tire_compounds": {
+    "Stock": {"ideal_temp_min_c": 70, "ideal_temp_max_c": 90, "grip_tier": 1},
+    "Street": {"ideal_temp_min_c": 75, "ideal_temp_max_c": 95, "grip_tier": 2},
+    "Sport": {"ideal_temp_min_c": 80, "ideal_temp_max_c": 100, "grip_tier": 3},
+    "Race": {"ideal_temp_min_c": 85, "ideal_temp_max_c": 110, "grip_tier": 4},
+    "Slick": {"ideal_temp_min_c": 90, "ideal_temp_max_c": 115, "grip_tier": 5},
+    "Drift": {"ideal_temp_min_c": 80, "ideal_temp_max_c": 110, "grip_tier": 3},
+    "Rally": {"ideal_temp_min_c": 75, "ideal_temp_max_c": 95, "grip_tier": 3},
+    "Off-Road": {"ideal_temp_min_c": 70, "ideal_temp_max_c": 90, "grip_tier": 2}
+  },
+  "pi_classes": {
+    "D": {"min_pi": 100, "max_pi": 500},
+    "C": {"min_pi": 501, "max_pi": 600},
+    "B": {"min_pi": 601, "max_pi": 700},
+    "A": {"min_pi": 701, "max_pi": 800},
+    "S1": {"min_pi": 801, "max_pi": 900},
+    "S2": {"min_pi": 901, "max_pi": 998},
+    "X": {"min_pi": 999, "max_pi": 999}
   }
 }
+
