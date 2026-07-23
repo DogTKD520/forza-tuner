@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import struct
 from typing import Any
 
 from app.ingestion.base import AbstractTelemetryProcessor, SourceInfo
@@ -39,6 +40,7 @@ class ForzaTelemetryProcessor(AbstractTelemetryProcessor):
         self._parser = ForzaPacketParser()
         self._aggregator = SessionAggregator()
         self._is_recording: bool = False
+        self._last_error_log_time: float = 0.0
 
     # ------------------------------------------------------------------
     # AbstractTelemetryProcessor interface
@@ -51,14 +53,17 @@ class ForzaTelemetryProcessor(AbstractTelemetryProcessor):
         try:
             frame: TelemetryFrame = self._parser.parse(raw_bytes, source_info.game_type)
         except (ValueError, struct.error) as exc:
-            logger.debug("Packet parse error from %s: %s", source_info.address, exc)
+            now = asyncio.get_running_loop().time()
+            if now - self._last_error_log_time > 5.0:
+                logger.warning("Packet parse error from %s: %s", source_info.address, exc)
+                self._last_error_log_time = now
             return
 
         if self._is_recording:
             self._aggregator.ingest(frame)
         else:
             # Always update latest frame for the live WebSocket feed
-            self._aggregator._latest_frame = frame  # noqa: SLF001
+            self._aggregator.set_latest_frame(frame)
 
     async def get_latest_frame(self) -> dict[str, Any] | None:
         return self._aggregator.get_latest_frame_dict()
@@ -92,17 +97,17 @@ class ForzaTelemetryProcessor(AbstractTelemetryProcessor):
 
 class _UDPListenerProtocol(asyncio.DatagramProtocol):
     """
-    Minimal asyncio protocol that forwards every datagram to the processor.
+    Minimal asyncio protocol that forwards every datagram to a bounded queue.
     Transport concerns (buffering, socket errors) stay here.
     """
 
     def __init__(
         self,
-        processor: AbstractTelemetryProcessor,
+        queue: asyncio.Queue,
         game_type_getter,
     ) -> None:
-        self._processor = processor
-        self._game_type_getter = game_type_getter   # callable returning "FM"|"FH"
+        self._queue = queue
+        self._game_type_getter = game_type_getter
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         source = SourceInfo(
@@ -110,16 +115,30 @@ class _UDPListenerProtocol(asyncio.DatagramProtocol):
             port=addr[1],
             game_type=self._game_type_getter(),
         )
-        # Fire-and-forget — schedule the coroutine on the running loop
-        asyncio.get_event_loop().create_task(
-            self._processor.process_raw_packet(data, source)
-        )
+        try:
+            self._queue.put_nowait((data, source))
+        except asyncio.QueueFull:
+            # Under extreme load, drop packets rather than OOMing
+            pass
 
     def error_received(self, exc: Exception) -> None:
         logger.warning("UDP error: %s", exc)
 
     def connection_lost(self, exc: Exception | None) -> None:
         logger.info("UDP socket closed.")
+
+
+async def _process_queue(queue: asyncio.Queue, processor: AbstractTelemetryProcessor) -> None:
+    """Dedicated worker task to process packets serially off the queue."""
+    while True:
+        try:
+            data, source = await queue.get()
+            await processor.process_raw_packet(data, source)
+            queue.task_done()
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            logger.error("Unhandled error in telemetry worker: %s", exc, exc_info=True)
 
 
 async def start_udp_listener(
@@ -129,19 +148,26 @@ async def start_udp_listener(
     game_type_getter,
 ) -> asyncio.BaseTransport:
     """
-    Bind a UDP socket and return the transport handle.
+    Bind a UDP socket, start the worker task, and return the transport handle.
 
     Call this once at FastAPI startup.  The returned transport can be used to
     close the socket on shutdown.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=100)
+
+    # Start the dedicated worker task
+    worker_task = loop.create_task(_process_queue(queue, processor))
+
     transport, _ = await loop.create_datagram_endpoint(
-        lambda: _UDPListenerProtocol(processor, game_type_getter),
+        lambda: _UDPListenerProtocol(queue, game_type_getter),
         local_addr=(host, port),
     )
+    
+    # Attach worker task to transport so it can be cancelled later if needed
+    transport.worker_task = worker_task
+
     logger.info("UDP telemetry listener started on %s:%d", host, port)
     return transport
 
 
-# Avoid NameError for struct in except clause
-import struct  # noqa: E402

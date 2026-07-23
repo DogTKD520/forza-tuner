@@ -29,6 +29,8 @@ class SetupSnapshot:
     rebound_rear: float
 
     # Vehicle specs & parameters
+    # Note: aero_* values typically map to the in-game tuning UI slider values/percentages
+    # whereas downforce_* (below) maps to the raw aerodynamic force (lbs/kg)
     pi_rating: int = 700
     hp: int = 400
     weight_lbs: float = 3000.0

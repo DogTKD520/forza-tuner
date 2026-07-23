@@ -11,6 +11,15 @@ import { pushTelemetrySample } from './charts.js';
 // ── DOM helpers ─────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 
+function escapeHtml(unsafe) {
+  return (unsafe || '').toString()
+       .replace(/&/g, "&amp;")
+       .replace(/</g, "&lt;")
+       .replace(/>/g, "&gt;")
+       .replace(/"/g, "&quot;")
+       .replace(/'/g, "&#039;");
+}
+
 // ── State ────────────────────────────────────────────────────
 const state = {
   activeGame: 'FM',
@@ -427,7 +436,7 @@ function renderRecommendations(data) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="icon">✅</div>
-        <div>${data.summary || 'No changes recommended.'}</div>
+        <div>${escapeHtml(data.summary) || 'No changes recommended.'}</div>
       </div>`;
     return;
   }
@@ -475,14 +484,14 @@ function renderRecommendations(data) {
         <td style="font-family:'Rajdhani',sans-serif;font-weight:600;color:var(--accent)">${adj.recommended_value}</td>
         <td>${deltaBadgeHtml}</td>
         <td style="color:var(--text-secondary);font-size:0.73rem">
-          ${adj.reason}
+          ${escapeHtml(adj.reason)}
           ${warningHtml}
         </td>
       </tr>`;
   }).join('');
 
   container.innerHTML = `
-    <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem">${data.summary ?? ''}</p>
+    <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem">${escapeHtml(data.summary ?? '')}</p>
     <div style="overflow-x:auto">
       <table class="rec-table">
         <thead>

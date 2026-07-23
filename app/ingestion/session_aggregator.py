@@ -19,9 +19,10 @@ from app.ingestion.parser import TelemetryFrame
 @dataclass
 class _CornerStats:
     """Rolling accumulator for a single tyre corner."""
-    inner_temps: list[float] = field(default_factory=list)
-    center_temps: list[float] = field(default_factory=list)
-    outer_temps: list[float] = field(default_factory=list)
+    temps: list[float] = field(default_factory=list)
+    slip_ratios: list[float] = field(default_factory=list)
+    slip_angles: list[float] = field(default_factory=list)
+    combined_slips: list[float] = field(default_factory=list)
     suspension_samples: list[float] = field(default_factory=list)
     bottom_out_count: int = 0      # frames where travel >= 0.95
     total_frames: int = 0
@@ -59,20 +60,21 @@ class SessionAggregator:
         self._lateral_g_samples.append(abs(frame.accel_x))
 
         corner_data = [
-            ("fl", frame.tire_temp_fl, frame.suspension_fl),
-            ("fr", frame.tire_temp_fr, frame.suspension_fr),
-            ("rl", frame.tire_temp_rl, frame.suspension_rl),
-            ("rr", frame.tire_temp_rr, frame.suspension_rr),
+            ("fl", frame.tire_temp_fl, frame.suspension_fl, frame.tire_slip_ratio_fl, frame.tire_slip_angle_fl, frame.tire_combined_slip_fl),
+            ("fr", frame.tire_temp_fr, frame.suspension_fr, frame.tire_slip_ratio_fr, frame.tire_slip_angle_fr, frame.tire_combined_slip_fr),
+            ("rl", frame.tire_temp_rl, frame.suspension_rl, frame.tire_slip_ratio_rl, frame.tire_slip_angle_rl, frame.tire_combined_slip_rl),
+            ("rr", frame.tire_temp_rr, frame.suspension_rr, frame.tire_slip_ratio_rr, frame.tire_slip_angle_rr, frame.tire_combined_slip_rr),
         ]
 
-        for corner_name, temps, suspension_travel in corner_data:
+        for corner_name, temp, suspension, ratio, angle, combined in corner_data:
             stats = self._corners[corner_name]
-            stats.inner_temps.append(temps[0])
-            stats.center_temps.append(temps[1])
-            stats.outer_temps.append(temps[2])
-            stats.suspension_samples.append(suspension_travel)
+            stats.temps.append(temp)
+            stats.slip_ratios.append(abs(ratio))
+            stats.slip_angles.append(abs(angle))
+            stats.combined_slips.append(abs(combined))
+            stats.suspension_samples.append(suspension)
             stats.total_frames += 1
-            if suspension_travel >= self.BOTTOM_OUT_THRESHOLD:
+            if suspension >= self.BOTTOM_OUT_THRESHOLD:
                 stats.bottom_out_count += 1
 
     # ------------------------------------------------------------------
@@ -84,9 +86,11 @@ class SessionAggregator:
         Return aggregated session metrics as a plain dict.
 
         Keys consumed by `MathBaselineAnalyzer`:
-          - corners.<corner>.avg_inner_temp
-          - corners.<corner>.avg_center_temp
-          - corners.<corner>.avg_outer_temp
+          - corners.<corner>.avg_temp
+          - corners.<corner>.avg_slip_ratio
+          - corners.<corner>.avg_slip_angle
+          - corners.<corner>.max_slip_angle
+          - corners.<corner>.avg_combined_slip
           - corners.<corner>.avg_suspension_travel
           - corners.<corner>.bottom_out_ratio   (0.0–1.0)
           - front_avg_suspension_travel
@@ -105,9 +109,11 @@ class SessionAggregator:
             if stats.total_frames == 0:
                 continue
             summary["corners"][corner_name] = {
-                "avg_inner_temp": _safe_mean(stats.inner_temps),
-                "avg_center_temp": _safe_mean(stats.center_temps),
-                "avg_outer_temp": _safe_mean(stats.outer_temps),
+                "avg_temp": _safe_mean(stats.temps),
+                "avg_slip_ratio": _safe_mean(stats.slip_ratios),
+                "avg_slip_angle": _safe_mean(stats.slip_angles),
+                "max_slip_angle": max(stats.slip_angles, default=0.0),
+                "avg_combined_slip": _safe_mean(stats.combined_slips),
                 "avg_suspension_travel": _safe_mean(stats.suspension_samples),
                 "peak_suspension_travel": max(stats.suspension_samples, default=0.0),
                 "bottom_out_ratio": (
@@ -176,6 +182,10 @@ class SessionAggregator:
     def reset(self) -> None:
         """Clear all accumulated data to start a fresh session."""
         self.__init__()
+
+    def set_latest_frame(self, frame: TelemetryFrame) -> None:
+        """Set the most recently parsed frame for live broadcasting."""
+        self._latest_frame = frame
 
 
 # ---------------------------------------------------------------------------

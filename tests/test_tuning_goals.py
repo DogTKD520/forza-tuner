@@ -28,19 +28,21 @@ def _default_setup(**overrides) -> SetupSnapshot:
     return SetupSnapshot(**defaults)
 
 
-def _make_corner(inner, center, outer, peak_travel=0.8, bottom_out_ratio=0.0):
+def _make_corner(temp=90.0, combined_slip=0.10, max_slip_angle=0.08, peak_travel=0.8, bottom_out_ratio=0.0, avg_travel=0.75):
     return {
-        "avg_inner_temp": inner,
-        "avg_center_temp": center,
-        "avg_outer_temp": outer,
-        "avg_suspension_travel": 0.75,
+        "avg_temp": temp,
+        "avg_combined_slip": combined_slip,
+        "avg_slip_ratio": 0.05,
+        "avg_slip_angle": 0.05,
+        "max_slip_angle": max_slip_angle,
+        "avg_suspension_travel": avg_travel,
         "peak_suspension_travel": peak_travel,
         "bottom_out_ratio": bottom_out_ratio,
     }
 
 
-def _sample_metrics(inner_delta=7.5, peak_travel=0.75):
-    corner = _make_corner(inner=80.0 + inner_delta / 2, center=80.0, outer=80.0 - inner_delta / 2, peak_travel=peak_travel)
+def _sample_metrics(max_slip_angle=0.10, peak_travel=0.75):
+    corner = _make_corner(max_slip_angle=max_slip_angle, peak_travel=peak_travel)
     return {
         "total_frames": 3600,
         "avg_speed_mps": 40.0,
@@ -62,10 +64,13 @@ class TestTuningGoals:
 
     @pytest.mark.asyncio
     async def test_camber_recommendation_differs_by_goal(self):
-        # With inner-outer delta of 7.5°C:
-        # street_road target delta is 7.5°C -> no camber change
-        # drift target delta is 12.0°C -> inner edge is cooler than drift target -> needs more negative camber
-        metrics = _sample_metrics(inner_delta=7.5)
+        # With peak slip angle of 0.10 rad:
+        # street_road target max slip is 0.10 -> no camber change
+        # drift target max slip is 0.20. (target * 0.5 = 0.10). Wait, let's use 0.08.
+        # If slip angle is 0.08:
+        # street_road (0.10): 0.08 > 0.05 (target*0.5) -> no change
+        # drift (0.20): 0.08 < 0.10 (target*0.5) -> too low slip angle -> reduce negative camber (delta > 0)
+        metrics = _sample_metrics(max_slip_angle=0.08)
         setup = _default_setup()
 
         res_street = await self.math_analyzer.analyze(metrics, setup, tuning_goal="street_road")
@@ -75,7 +80,7 @@ class TestTuningGoals:
         res_drift = await self.math_analyzer.analyze(metrics, setup, tuning_goal="drift")
         camber_drift = [a for a in res_drift.adjustments if "camber" in a.parameter]
         assert len(camber_drift) > 0
-        assert camber_drift[0].delta < 0  # more negative camber needed
+        assert camber_drift[0].delta > 0  # reduce negative camber magnitude (moving towards 0)
 
     @pytest.mark.asyncio
     async def test_summary_includes_goal_name(self):

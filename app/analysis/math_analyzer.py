@@ -7,15 +7,14 @@ can be tuned without touching source code.
 Rules implemented
 ─────────────────
 Tyre Pressure
-  • Average center temperature should equal the average of inner + outer temps
-    (i.e. the tyre is working uniformly across its contact patch).
-  • If center is hotter than the average edge temps → over-inflated → reduce PSI.
-  • If center is cooler → under-inflated → increase PSI.
+  • Evaluate steady-state grip using TireCombinedSlip against average tyre temps.
+  • Sliding and overheating → under-inflated (too much flex).
+  • Sliding and cool → over-inflated (insufficient contact patch).
 
 Camber
-  • Under lateral load the inner edge should run 5–10 °C hotter than the outer.
-  • Inner cooler than outer → not enough negative camber → increase (more negative).
-  • Inner much hotter → too much camber → reduce.
+  • Use peak TireSlipAngle on outside wheels under lateral load.
+  • Slip angle spikes prematurely → suggest increasing negative camber.
+  • Slip angle very low → suggest reducing negative camber magnitude.
 
 Spring Rate
   • Ideal: peak suspension travel 70–90% of full compression range.
@@ -130,20 +129,23 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         fl = corners.get("fl")
         fr = corners.get("fr")
         if fl and fr:
-            avg_inner = (fl["avg_inner_temp"] + fr["avg_inner_temp"]) / 2
-            avg_center = (fl["avg_center_temp"] + fr["avg_center_temp"]) / 2
-            avg_outer = (fl["avg_outer_temp"] + fr["avg_outer_temp"]) / 2
+            avg_temp = (fl["avg_temp"] + fr["avg_temp"]) / 2
+            avg_combined_slip = (fl["avg_combined_slip"] + fr["avg_combined_slip"]) / 2
+            max_slip_angle = max(fl["max_slip_angle"], fr["max_slip_angle"])
+
+            compound_name = setup.tire_compound or "Sport"
+            compound_info = self._tire_compounds.get(compound_name, self._tire_compounds.get("Sport", {}))
 
             pressure_adj = self._pressure_adjustment(
-                avg_inner, avg_center, avg_outer,
+                avg_temp, avg_combined_slip,
                 setup.tire_pressure_front, "tire_pressure_front",
-                pressure_rules,
+                pressure_rules, compound_info
             )
             if pressure_adj:
                 adjustments.append(pressure_adj)
 
             camber_adj = self._camber_adjustment(
-                avg_inner, avg_outer,
+                max_slip_angle,
                 setup.camber_front, "camber_front",
                 camber_rules,
             )
@@ -165,20 +167,23 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         rl = corners.get("rl")
         rr = corners.get("rr")
         if rl and rr:
-            avg_inner = (rl["avg_inner_temp"] + rr["avg_inner_temp"]) / 2
-            avg_center = (rl["avg_center_temp"] + rr["avg_center_temp"]) / 2
-            avg_outer = (rl["avg_outer_temp"] + rr["avg_outer_temp"]) / 2
+            avg_temp = (rl["avg_temp"] + rr["avg_temp"]) / 2
+            avg_combined_slip = (rl["avg_combined_slip"] + rr["avg_combined_slip"]) / 2
+            max_slip_angle = max(rl["max_slip_angle"], rr["max_slip_angle"])
+
+            compound_name = setup.tire_compound or "Sport"
+            compound_info = self._tire_compounds.get(compound_name, self._tire_compounds.get("Sport", {}))
 
             pressure_adj = self._pressure_adjustment(
-                avg_inner, avg_center, avg_outer,
+                avg_temp, avg_combined_slip,
                 setup.tire_pressure_rear, "tire_pressure_rear",
-                pressure_rules,
+                pressure_rules, compound_info
             )
             if pressure_adj:
                 adjustments.append(pressure_adj)
 
             camber_adj = self._camber_adjustment(
-                avg_inner, avg_outer,
+                max_slip_angle,
                 setup.camber_rear, "camber_rear",
                 camber_rules,
             )
@@ -280,7 +285,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         front_travel = session_metrics.get("front_avg_suspension_travel", 0.0)
         rear_travel = session_metrics.get("rear_avg_suspension_travel", 0.0)
 
-        if rear_travel < 1e-6:
+        if rear_travel < 1e-6 or front_travel < 1e-6:
             return
 
         roll_ratio = front_travel / rear_travel
@@ -359,10 +364,8 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         all_temps = []
         for corner_name, data in corners.items():
             if isinstance(data, dict):
-                inner = data.get("avg_inner_temp", 0)
-                center = data.get("avg_center_temp", 0)
-                outer = data.get("avg_outer_temp", 0)
-                all_temps.extend([inner, center, outer])
+                temp = data.get("avg_temp", 0)
+                all_temps.append(temp)
 
         if not all_temps:
             return
@@ -420,35 +423,41 @@ class MathBaselineAnalyzer(AnalysisStrategy):
 
     def _pressure_adjustment(
         self,
-        avg_inner: float,
-        avg_center: float,
-        avg_outer: float,
+        avg_temp: float,
+        avg_combined_slip: float,
         current_psi: float,
         param_name: str,
         pressure_rules: dict,
+        compound_info: dict,
     ) -> Adjustment | None:
-        rules = pressure_rules
-        edge_avg = (avg_inner + avg_outer) / 2.0
-        delta_to_edge = avg_center - edge_avg   # positive → over-inflated
+        ideal_min = compound_info.get("ideal_temp_min_c", 80)
+        ideal_max = compound_info.get("ideal_temp_max_c", 100)
+        
+        target_slip = pressure_rules.get("target_combined_slip_max", 0.12)
+        step = pressure_rules["step_psi"]
 
-        if abs(delta_to_edge) <= rules["tolerance_celsius"]:
-            return None
-
-        steps = delta_to_edge / rules["tolerance_celsius"]
-        psi_change = -steps * rules["step_psi"]   # negative because hotter center → reduce PSI
-        psi_change = _clamp(psi_change, -rules["max_adjustment_psi"], rules["max_adjustment_psi"])
-        recommended = round(current_psi + psi_change, 1)
-
-        if delta_to_edge > 0:
-            reason = (
-                f"Centre tyre {delta_to_edge:.1f}°C hotter than edges — over-inflated. "
-                f"Reduce {param_name} by {abs(psi_change):.1f} PSI."
-            )
+        if avg_combined_slip > target_slip:
+            if avg_temp > ideal_max:
+                reason = f"Tyre is overheating ({avg_temp:.1f}°C) and sliding (Slip: {avg_combined_slip:.2f}). Increase {param_name} to reduce sidewall flex."
+                psi_change = step
+            elif avg_temp < ideal_min:
+                reason = f"Tyre is cold ({avg_temp:.1f}°C) and sliding (Slip: {avg_combined_slip:.2f}). Reduce {param_name} to increase contact patch."
+                psi_change = -step
+            else:
+                reason = f"Tyre is in optimal temp range but sliding excessively (Slip: {avg_combined_slip:.2f}). Reduce {param_name} to maximize grip."
+                psi_change = -step
         else:
-            reason = (
-                f"Centre tyre {abs(delta_to_edge):.1f}°C cooler than edges — under-inflated. "
-                f"Increase {param_name} by {abs(psi_change):.1f} PSI."
-            )
+            if avg_temp > ideal_max + 5.0:
+                reason = f"Tyre is severely overheating ({avg_temp:.1f}°C) even with good grip. Increase {param_name}."
+                psi_change = step
+            elif avg_temp < ideal_min - 5.0:
+                reason = f"Tyre is too cold ({avg_temp:.1f}°C) to reach optimal grip. Reduce {param_name}."
+                psi_change = -step
+            else:
+                return None
+
+        psi_change = _clamp(psi_change, -pressure_rules["max_adjustment_psi"], pressure_rules["max_adjustment_psi"])
+        recommended = round(current_psi + psi_change, 1)
 
         return Adjustment(
             parameter=param_name,
@@ -460,46 +469,24 @@ class MathBaselineAnalyzer(AnalysisStrategy):
 
     def _camber_adjustment(
         self,
-        avg_inner: float,
-        avg_outer: float,
+        max_slip_angle: float,
         current_camber: float,
         param_name: str,
         camber_rules: dict,
     ) -> Adjustment | None:
-        rules = camber_rules
-        inner_outer_delta = avg_inner - avg_outer   # positive = inner hotter than outer
+        target_max_angle = camber_rules.get("target_max_slip_angle", 0.10)
+        step = camber_rules["step_degrees"]
 
-        target = rules["target_inner_outer_delta_celsius"]
-        tolerance = rules["tolerance_celsius"]
-        deviation = inner_outer_delta - target
-
-        if abs(deviation) <= tolerance:
+        if max_slip_angle > target_max_angle:
+            camber_change = -step
+            reason = f"Peak slip angle is high ({max_slip_angle:.2f} rad), suggesting tyre roll-over. Increase negative {param_name} magnitude."
+        elif max_slip_angle < target_max_angle * 0.5:
+            camber_change = +step
+            reason = f"Peak slip angle is very low ({max_slip_angle:.2f} rad). Reduce {param_name} magnitude to improve overall grip."
+        else:
             return None
 
-        # deviation > 0 → inner too hot → too much camber → reduce magnitude
-        #   Camber is negative (e.g. -2.5°); reducing magnitude means moving toward 0
-        #   → add a positive step_degrees value.
-        # deviation < 0 → inner too cool → not enough camber → increase magnitude
-        #   Moving away from 0 (more negative) → subtract step_degrees.
-        steps = abs(deviation) / tolerance
-        raw_change = steps * rules["step_degrees"]
-        raw_change = min(raw_change, rules["max_adjustment_degrees"])
-
-        if deviation > 0:
-            # Too much camber: reduce magnitude (add positive value to negative camber)
-            camber_change = +raw_change
-            reason = (
-                f"Inner {deviation:.1f}°C hotter than target delta ({target}°C) — too much camber. "
-                f"Reduce {param_name} magnitude by {raw_change:.1f}°."
-            )
-        else:
-            # Not enough camber: increase magnitude (subtract from negative camber)
-            camber_change = -raw_change
-            reason = (
-                f"Inner {abs(deviation):.1f}°C cooler than target delta ({target}°C) — not enough camber. "
-                f"Increase {param_name} magnitude by {raw_change:.1f}°."
-            )
-
+        camber_change = _clamp(camber_change, -camber_rules["max_adjustment_degrees"], camber_rules["max_adjustment_degrees"])
         recommended = round(current_camber + camber_change, 1)
 
         return Adjustment(

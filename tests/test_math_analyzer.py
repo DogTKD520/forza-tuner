@@ -31,11 +31,20 @@ def _default_setup(**overrides) -> SetupSnapshot:
     return SetupSnapshot(**defaults)
 
 
-def _make_corner(inner, center, outer, peak_travel=0.8, bottom_out_ratio=0.0, avg_travel=0.75):
+def _make_corner(
+    temp=90.0,
+    combined_slip=0.10,
+    max_slip_angle=0.08,
+    peak_travel=0.8,
+    bottom_out_ratio=0.0,
+    avg_travel=0.75
+):
     return {
-        "avg_inner_temp": inner,
-        "avg_center_temp": center,
-        "avg_outer_temp": outer,
+        "avg_temp": temp,
+        "avg_combined_slip": combined_slip,
+        "avg_slip_ratio": 0.05,
+        "avg_slip_angle": 0.05,
+        "max_slip_angle": max_slip_angle,
         "avg_suspension_travel": avg_travel,
         "peak_suspension_travel": peak_travel,
         "bottom_out_ratio": bottom_out_ratio,
@@ -43,13 +52,8 @@ def _make_corner(inner, center, outer, peak_travel=0.8, bottom_out_ratio=0.0, av
 
 
 def _balanced_metrics(**corner_overrides):
-    """Return a well-balanced session metrics dict.
-
-    Tyre temps chosen so that:
-      - Centre ≈ average of inner/outer (within ±2°C pressure tolerance)
-      - Inner - Outer ≈ 6°C (within the 7.5°C ± 2.5°C camber tolerance)
-    """
-    balanced_corner = _make_corner(inner=83.0, center=80.0, outer=77.0)
+    """Return a well-balanced session metrics dict."""
+    balanced_corner = _make_corner(temp=90.0, combined_slip=0.10, max_slip_angle=0.08)
     corners = {
         "fl": balanced_corner.copy(),
         "fr": balanced_corner.copy(),
@@ -78,61 +82,54 @@ class TestMathBaselineAnalyzer:
         assert "well-balanced" in result.summary.lower()
 
     @pytest.mark.asyncio
-    async def test_over_inflated_tyre_reduces_pressure(self):
-        """Center hotter than edges → over-inflated → reduce PSI."""
-        hot_center_corner = _make_corner(inner=78.0, center=90.0, outer=78.0)
-        metrics = _balanced_metrics(
-            fl=hot_center_corner, fr=hot_center_corner
-        )
+    async def test_hot_and_sliding_increases_pressure(self):
+        """Hot (105C) and sliding (>0.12 slip) -> increase PSI."""
+        hot_corner = _make_corner(temp=105.0, combined_slip=0.15)
+        metrics = _balanced_metrics(fl=hot_corner, fr=hot_corner)
         result = await self.analyzer.analyze(metrics, _default_setup())
         pressure_adj = next(
             (a for a in result.adjustments if a.parameter == "tire_pressure_front"), None
         )
         assert pressure_adj is not None, "Expected a pressure adjustment for front"
-        assert pressure_adj.delta < 0, "Over-inflated tyre should reduce pressure"
+        assert pressure_adj.delta > 0, "Overheating & sliding -> increase PSI"
 
     @pytest.mark.asyncio
-    async def test_under_inflated_tyre_increases_pressure(self):
-        """Center cooler than edges → under-inflated → increase PSI."""
-        cold_center_corner = _make_corner(inner=82.0, center=70.0, outer=82.0)
-        metrics = _balanced_metrics(
-            fl=cold_center_corner, fr=cold_center_corner
-        )
+    async def test_cold_and_sliding_reduces_pressure(self):
+        """Cold (75C) and sliding (>0.12 slip) -> reduce PSI."""
+        cold_corner = _make_corner(temp=75.0, combined_slip=0.15)
+        metrics = _balanced_metrics(fl=cold_corner, fr=cold_corner)
         result = await self.analyzer.analyze(metrics, _default_setup())
         pressure_adj = next(
             (a for a in result.adjustments if a.parameter == "tire_pressure_front"), None
         )
         assert pressure_adj is not None
-        assert pressure_adj.delta > 0, "Under-inflated tyre should increase pressure"
+        assert pressure_adj.delta < 0, "Cold & sliding -> reduce PSI"
 
     @pytest.mark.asyncio
-    async def test_too_much_camber_reduces_camber_magnitude(self):
-        """Inner much hotter than outer (>10°C above target delta) → too much camber."""
-        excess_camber_corner = _make_corner(inner=105.0, center=80.0, outer=65.0)
-        metrics = _balanced_metrics(
-            fl=excess_camber_corner, fr=excess_camber_corner
-        )
+    async def test_too_much_slip_angle_increases_negative_camber(self):
+        """Max slip angle > 0.10 -> roll-over -> increase negative camber."""
+        excess_slip_corner = _make_corner(max_slip_angle=0.15)
+        metrics = _balanced_metrics(fl=excess_slip_corner, fr=excess_slip_corner)
         result = await self.analyzer.analyze(metrics, _default_setup())
         camber_adj = next(
             (a for a in result.adjustments if a.parameter == "camber_front"), None
         )
         assert camber_adj is not None
-        # Reducing magnitude of negative camber means delta should be positive
-        assert camber_adj.delta > 0, "Too much camber → reduce magnitude (delta positive)"
+        # Increasing negative camber means moving away from 0 -> delta should be negative
+        assert camber_adj.delta < 0, "Too much slip angle -> increase negative camber (delta negative)"
 
     @pytest.mark.asyncio
-    async def test_not_enough_camber_increases_magnitude(self):
-        """Inner cooler than outer → not enough camber → more negative camber."""
-        low_camber_corner = _make_corner(inner=70.0, center=80.0, outer=80.0)
-        metrics = _balanced_metrics(
-            fl=low_camber_corner, fr=low_camber_corner
-        )
+    async def test_very_low_slip_angle_reduces_negative_camber(self):
+        """Max slip angle < 0.05 -> reduce negative camber magnitude."""
+        low_slip_corner = _make_corner(max_slip_angle=0.03)
+        metrics = _balanced_metrics(fl=low_slip_corner, fr=low_slip_corner)
         result = await self.analyzer.analyze(metrics, _default_setup())
         camber_adj = next(
             (a for a in result.adjustments if a.parameter == "camber_front"), None
         )
         assert camber_adj is not None
-        assert camber_adj.delta < 0, "Not enough camber → increase magnitude (delta negative)"
+        # Reducing magnitude of negative camber -> delta positive
+        assert camber_adj.delta > 0, "Very low slip angle -> reduce negative camber magnitude (delta positive)"
 
     @pytest.mark.asyncio
     async def test_bottoming_out_stiffens_springs(self):

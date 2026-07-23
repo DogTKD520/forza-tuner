@@ -20,17 +20,13 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Shared set of connected WebSocket clients
-_connected_clients: set[WebSocket] = set()
+
 
 
 @router.websocket("/ws/telemetry")
 async def telemetry_websocket(websocket: WebSocket):
     await websocket.accept()
-    _connected_clients.add(websocket)
-    logger.info(
-        "WebSocket client connected. Total clients: %d", len(_connected_clients)
-    )
+    logger.info("WebSocket client connected.")
 
     frame_interval = 1.0 / settings.websocket_fps
 
@@ -49,5 +45,3 @@ async def telemetry_websocket(websocket: WebSocket):
         logger.info("WebSocket client disconnected.")
     except Exception as exc:
         logger.warning("WebSocket error: %s", exc)
-    finally:
-        _connected_clients.discard(websocket)

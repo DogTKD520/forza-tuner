@@ -47,11 +47,10 @@ class TelemetryFrame:
     suspension_rr: float
 
     # --- Tyre surface temperatures (°C) ---
-    # Each corner: [inner, center, outer]  (Motorsport format provides all three)
-    tire_temp_fl: list[float]   # [inner, center, outer]
-    tire_temp_fr: list[float]
-    tire_temp_rl: list[float]
-    tire_temp_rr: list[float]
+    tire_temp_fl: float
+    tire_temp_fr: float
+    tire_temp_rl: float
+    tire_temp_rr: float
 
     # --- Wheel rotation speed (rad/s) ---
     wheel_speed_fl: float
@@ -70,94 +69,67 @@ class TelemetryFrame:
     tire_slip_angle_rl: float
     tire_slip_angle_rr: float
 
+    tire_combined_slip_fl: float
+    tire_combined_slip_fr: float
+    tire_combined_slip_rl: float
+    tire_combined_slip_rr: float
+
     # --- Meta ---
     gear: int
     is_race_on: bool
-    game_type: str            # "FM" | "FH"
+    game_type: str            # "FM" | "FH" | "FM2023"
 
 
 # ---------------------------------------------------------------------------
 # Struct layouts
+# Ground Truth References:
+# csutorasa/go-forza-telemetry, 0x20F/forza-telemetry, richstokes/Forza-data-tools
 # ---------------------------------------------------------------------------
 
-# Common fields shared by both FM and FH.
-# Format string uses little-endian (<) throughout.
-# Field order matches the official Forza Dash UDP output spec.
-_COMMON_FMT = "<"  # we build incrementally below
-
-# Offsets (byte positions) for each group — documented for maintainability.
-# Sled block: bytes 0–231
-# Dash block: bytes 232–311 (FM) / 232–324 (FH)
-
+# Sled block: bytes 0-231 (Shared by both FM and FH)
 _SLED_STRUCT = struct.Struct(
     "<"
-    "i"        # [0]  is_race_on          int32
-    "I"        # [1]  timestamp_ms        uint32
-    "3f"       # [2-4] EngineMaxRpm, EngineIdleRpm, CurrentEngineRpm
-    "9f"       # [5-13] accel xyz, vel xyz, roll/pitch/yaw
-    "f"        # [14] normalized_driving_line (ignored)
-    "f"        # [15] normalized_ai_brake_difference (ignored)
-    "f"        # [16] speed (m/s)
-    "f"        # [17] power (watts, ignored)
-    "f"        # [18] torque (nm, ignored)
-    "4f"       # [19-22] tire_temp_FL/FR/RL/RR  (single-value surface temp in FH sled)
-    "f"        # [23] boost
-    "f"        # [24] fuel (ignored)
-    "f"        # [25] distance_traveled (ignored)
-    "f"        # [26] best_lap_time (ignored)
-    "f"        # [27] last_lap_time (ignored)
-    "f"        # [28] cur_lap_time (ignored)
-    "f"        # [29] cur_race_time (ignored)
-    "H"        # [30] lap_no  uint16
-    "H"        # [31] race_position uint16
-    "B"        # [32] accel pedal 0-255
-    "B"        # [33] brake pedal 0-255
-    "B"        # [34] clutch 0-255 (ignored)
-    "B"        # [35] hand_brake (ignored)
-    "B"        # [36] gear (ignored)
-    "b"        # [37] steer -127 to 127
-    "b"        # [38] normalized_driving_line (ignored, repeated)
-    "b"        # [39] normalized_ai_brake_difference (ignored, repeated)
+    "i"        # [0]  is_race_on
+    "I"        # [1]  timestamp_ms
+    "15f"      # [2-16] EngineMax, EngineIdle, EngineCurrent, Accel X/Y/Z, Vel X/Y/Z, AngVel X/Y/Z, Yaw/Pitch/Roll
+    "4f"       # [17-20] normalized_suspension_travel FL/FR/RL/RR
+    "4f"       # [21-24] tire_slip_ratio FL/FR/RL/RR
+    "4f"       # [25-28] wheel_rotation_speed FL/FR/RL/RR
+    "4i"       # [29-32] wheel_on_rumble_strip FL/FR/RL/RR
+    "4f"       # [33-36] wheel_in_puddle FL/FR/RL/RR
+    "4f"       # [37-40] surface_rumble FL/FR/RL/RR
+    "4f"       # [41-44] tire_slip_angle FL/FR/RL/RR
+    "4f"       # [45-48] tire_combined_slip FL/FR/RL/RR
+    "4f"       # [49-52] suspension_travel_meters FL/FR/RL/RR
+    "5i"       # [53-57] car_ordinal, car_class, car_pi, drivetrain_type, num_cylinders
 )
 
-# Dash extension block — appended after the sled block in both FM and FH.
+# Dash block: Appended after Sled block.
 _DASH_STRUCT = struct.Struct(
     "<"
-    "f"        # [0]  position_x (ignored)
-    "f"        # [1]  position_y (ignored)
-    "f"        # [2]  position_z (ignored)
-    "f"        # [3]  speed (duplicate, ignored)
-    "f"        # [4]  power (ignored)
-    "f"        # [5]  torque (ignored)
-    "4f"       # [6-9]  tire_temp_FL/FR/RL/RR (duplicate surface temps)
-    "4f"       # [10-13] boost/fuel/dist/bestlap (ignored)
-    "4f"       # [14-17] last_lap/cur_lap/cur_race/lap_no (ignored)
-    "4f"       # [18-21] race_position/accel/brake/clutch (ignored)
-    "4f"       # [22-25] hand_brake/gear/steer/unk (ignored)
-    "4f"       # [26-29] normalized_suspension_travel FL/FR/RL/RR  ← KEY
-    "4f"       # [30-33] tire_slip_ratio FL/FR/RL/RR (ignored)
-    "4f"       # [34-37] wheel_rotation_speed FL/FR/RL/RR  ← KEY
-    "4f"       # [38-41] tire_slip_angle FL/FR/RL/RR (ignored)
-    "4f"       # [42-45] tire_combined_slip FL/FR/RL/RR (ignored)
-    "4f"       # [46-49] suspension_travel_meters FL/FR/RL/RR (ignored)
-    "i"        # [50] car_ordinal
-    "i"        # [51] car_class
-    "i"        # [52] car_PI
-    "i"        # [53] drivetrain_type (ignored)
-    "i"        # [54] num_cylinders (ignored)
+    "3f"       # [0-2] position_x, position_y, position_z
+    "f"        # [3] speed
+    "f"        # [4] power
+    "f"        # [5] torque
+    "4f"       # [6-9] tire_temp_FL/FR/RL/RR
+    "f"        # [10] boost
+    "f"        # [11] fuel
+    "f"        # [12] distance_traveled
+    "f"        # [13] best_lap_time
+    "f"        # [14] last_lap_time
+    "f"        # [15] cur_lap_time
+    "f"        # [16] cur_race_time
+    "H"        # [17] lap_no
+    "B"        # [18] race_position
+    "B"        # [19] accel pedal 0-255
+    "B"        # [20] brake pedal 0-255
+    "B"        # [21] clutch 0-255
+    "B"        # [22] hand_brake
+    "B"        # [23] gear
+    "b"        # [24] steer -127 to 127
+    "b"        # [25] normalized_driving_line
+    "b"        # [26] normalized_ai_brake_difference
 )
-
-# FM additionally includes tri-zone tyre temps after the dash block
-# Format: 12 floats = [FL_inner, FL_center, FL_outer, FR_inner, ...]
-_FM_TRIZONE_STRUCT = struct.Struct("<12f")
-
-_FM_SLED_SIZE = _SLED_STRUCT.size   # 232 bytes
-_FM_DASH_OFFSET = _FM_SLED_SIZE      # 232
-_FM_DASH_SIZE = _DASH_STRUCT.size
-_FM_TRIZONE_OFFSET = _FM_DASH_OFFSET + _FM_DASH_SIZE
-_FM_MIN_SIZE = _FM_TRIZONE_OFFSET + _FM_TRIZONE_STRUCT.size   # ~311 bytes
-
-_FH_MIN_SIZE = _FM_DASH_OFFSET + _DASH_STRUCT.size   # 324 — no trizone
 
 
 # ---------------------------------------------------------------------------
@@ -168,57 +140,48 @@ class ForzaPacketParser:
     """
     Converts raw UDP bytes into a `TelemetryFrame`.
 
-    Raises `ValueError` for packets that are too short to parse safely.
+    Raises `ValueError` for packets with unknown lengths.
     """
 
     def parse(
-        self, raw_bytes: bytes, game_type: Literal["FM", "FH"]
+        self, raw_bytes: bytes, game_type_hint: Literal["FM", "FH"] = "FM"
     ) -> TelemetryFrame:
-        if game_type == "FM":
-            return self._parse_fm(raw_bytes)
-        return self._parse_fh(raw_bytes)
+        # Dispatch by precise packet length
+        pkt_len = len(raw_bytes)
+        
+        if pkt_len == 311:
+            return self._parse_fm(raw_bytes, "FM")
+        elif pkt_len == 331:
+            return self._parse_fm(raw_bytes, "FM2023")
+        elif pkt_len == 324:
+            return self._parse_fh(raw_bytes)
+        else:
+            raise ValueError(f"Unknown packet length: {pkt_len}")
 
     # ------------------------------------------------------------------
     # Forza Motorsport
     # ------------------------------------------------------------------
 
-    def _parse_fm(self, data: bytes) -> TelemetryFrame:
-        if len(data) < _FM_MIN_SIZE:
-            raise ValueError(
-                f"FM packet too short: got {len(data)} bytes, need {_FM_MIN_SIZE}"
-            )
-
+    def _parse_fm(self, data: bytes, game_type: str) -> TelemetryFrame:
         sled = _SLED_STRUCT.unpack_from(data, 0)
-        dash = _DASH_STRUCT.unpack_from(data, _FM_DASH_OFFSET)
-        trizone = _FM_TRIZONE_STRUCT.unpack_from(data, _FM_TRIZONE_OFFSET)
+        dash = _DASH_STRUCT.unpack_from(data, 232)
+        
+        # Temps are in Fahrenheit, convert to Celsius
+        tire_temps = [(t - 32.0) * 5.0 / 9.0 for t in dash[6:10]]
 
-        # trizone: FL_i, FL_c, FL_o, FR_i, FR_c, FR_o, RL_i, RL_c, RL_o, RR_i, RR_c, RR_o
-        tire_temps = [
-            list(trizone[0:3]),
-            list(trizone[3:6]),
-            list(trizone[6:9]),
-            list(trizone[9:12]),
-        ]
-
-        return self._build_frame(sled, dash, tire_temps, "FM")
+        return self._build_frame(sled, dash, tire_temps, game_type)
 
     # ------------------------------------------------------------------
     # Forza Horizon
     # ------------------------------------------------------------------
 
     def _parse_fh(self, data: bytes) -> TelemetryFrame:
-        if len(data) < _FH_MIN_SIZE:
-            raise ValueError(
-                f"FH packet too short: got {len(data)} bytes, need {_FH_MIN_SIZE}"
-            )
-
         sled = _SLED_STRUCT.unpack_from(data, 0)
-        dash = _DASH_STRUCT.unpack_from(data, _FM_DASH_OFFSET)
+        # FH has a 12-byte padding gap after SLED
+        dash = _DASH_STRUCT.unpack_from(data, 232 + 12)
 
-        # FH only provides a single surface temperature per tyre — replicate
-        # it across all three zones so downstream code stays identical.
-        sled_temps = sled[19:23]  # FL, FR, RL, RR single values
-        tire_temps = [[t, t, t] for t in sled_temps]
+        # Temps are in Fahrenheit, convert to Celsius
+        tire_temps = [(t - 32.0) * 5.0 / 9.0 for t in dash[6:10]]
 
         return self._build_frame(sled, dash, tire_temps, "FH")
 
@@ -230,17 +193,17 @@ class ForzaPacketParser:
         self,
         sled: tuple,
         dash: tuple,
-        tire_temps: list[list[float]],
+        tire_temps: list[float],
         game_type: str,
     ) -> TelemetryFrame:
         return TelemetryFrame(
             is_race_on=bool(sled[0]),
-            speed_mps=sled[16],
+            speed_mps=dash[3],
             rpm=sled[4],
-            boost=sled[23],
-            throttle=sled[32] / 255.0,
-            brake=sled[33] / 255.0,
-            steer=sled[37] / 127.0,
+            boost=dash[10],
+            throttle=dash[19] / 255.0,
+            brake=dash[20] / 255.0,
+            steer=dash[24] / 127.0,
             accel_x=sled[5],
             accel_y=sled[6],
             accel_z=sled[7],
@@ -248,22 +211,26 @@ class ForzaPacketParser:
             tire_temp_fr=tire_temps[1],
             tire_temp_rl=tire_temps[2],
             tire_temp_rr=tire_temps[3],
-            suspension_fl=dash[26],
-            suspension_fr=dash[27],
-            suspension_rl=dash[28],
-            suspension_rr=dash[29],
-            wheel_speed_fl=dash[34],
-            wheel_speed_fr=dash[35],
-            wheel_speed_rl=dash[36],
-            wheel_speed_rr=dash[37],
-            tire_slip_ratio_fl=dash[30],
-            tire_slip_ratio_fr=dash[31],
-            tire_slip_ratio_rl=dash[32],
-            tire_slip_ratio_rr=dash[33],
-            tire_slip_angle_fl=dash[38],
-            tire_slip_angle_fr=dash[39],
-            tire_slip_angle_rl=dash[40],
-            tire_slip_angle_rr=dash[41],
-            gear=sled[36],
+            suspension_fl=sled[17],
+            suspension_fr=sled[18],
+            suspension_rl=sled[19],
+            suspension_rr=sled[20],
+            wheel_speed_fl=sled[25],
+            wheel_speed_fr=sled[26],
+            wheel_speed_rl=sled[27],
+            wheel_speed_rr=sled[28],
+            tire_slip_ratio_fl=sled[21],
+            tire_slip_ratio_fr=sled[22],
+            tire_slip_ratio_rl=sled[23],
+            tire_slip_ratio_rr=sled[24],
+            tire_slip_angle_fl=sled[41],
+            tire_slip_angle_fr=sled[42],
+            tire_slip_angle_rl=sled[43],
+            tire_slip_angle_rr=sled[44],
+            tire_combined_slip_fl=sled[45],
+            tire_combined_slip_fr=sled[46],
+            tire_combined_slip_rl=sled[47],
+            tire_combined_slip_rr=sled[48],
+            gear=dash[23],
             game_type=game_type,
         )

@@ -156,6 +156,7 @@ The codebase is structured to allow future expansion **without refactoring**:
 - **SSO Authentication**: Replace `DEFAULT_USER_ID` in `repositories.py` with Cloudflare Access header (`CF-Access-Authenticated-User-Email`).
 - **Remote Telemetry Agents**: Implement `AbstractTelemetryProcessor` over WebSockets for client PCs running far from the server.
 - **GPU Queueing**: Enable `USE_LLM=True` to queue AI analysis requests sequentially without VRAM collisions.
+- **Security / Trust Model**: As shipped, there is **NO built-in authentication**. All telemetry and setups default to a single local administrator scope (`local_admin`). The application relies entirely on whatever sits in front of it (like Cloudflare Access or a reverse proxy) to establish trust and inject identity headers. Do not expose this service directly to the public internet without an external authentication gateway.
 
 ---
 

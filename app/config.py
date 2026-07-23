@@ -12,6 +12,12 @@ from typing import Literal
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+@lru_cache(maxsize=1)
+def _load_tuning_rules() -> dict:
+    rules_path = Path(__file__).parent.parent / "config" / "tuning_rules.json"
+    with rules_path.open() as file_handle:
+        return json.load(file_handle)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
@@ -45,9 +51,7 @@ class Settings(BaseSettings):
     @property
     def tuning_rules(self) -> dict:
         """Load tuning thresholds from config/tuning_rules.json (cached per process)."""
-        rules_path = Path(__file__).parent.parent / "config" / "tuning_rules.json"
-        with rules_path.open() as file_handle:
-            return json.load(file_handle)
+        return _load_tuning_rules()
 
 
 @lru_cache(maxsize=1)

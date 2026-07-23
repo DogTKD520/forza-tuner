@@ -1,15 +1,13 @@
 {
   "tire_pressure": {
-    "description": "Adjust PSI based on center vs average-of-inner-outer temperature delta.",
-    "target_center_delta_celsius": 0,
-    "tolerance_celsius": 2,
+    "description": "Adjust PSI based on TireCombinedSlip and temperature.",
+    "target_combined_slip_max": 0.12,
     "step_psi": 0.5,
     "max_adjustment_psi": 3.0
   },
   "camber": {
-    "description": "Adjust camber so the inner edge runs slightly hotter than the outer under lateral load.",
-    "target_inner_outer_delta_celsius": 7.5,
-    "tolerance_celsius": 2.5,
+    "description": "Adjust camber based on peak TireSlipAngle under lateral load.",
+    "target_max_slip_angle": 0.10,
     "step_degrees": 0.2,
     "max_adjustment_degrees": 2.0
   },
@@ -57,7 +55,7 @@
         "target_travel_utilisation_max": 0.90
       },
       "camber": {
-        "target_inner_outer_delta_celsius": 7.5
+        "target_max_slip_angle": 0.10
       },
       "anti_roll_bar": {
         "target_roll_balance_ratio": 1.0
@@ -71,7 +69,7 @@
         "target_travel_utilisation_max": 0.95
       },
       "camber": {
-        "target_inner_outer_delta_celsius": 4.0
+        "target_max_slip_angle": 0.15
       },
       "anti_roll_bar": {
         "target_roll_balance_ratio": 0.85
@@ -85,7 +83,7 @@
         "target_travel_utilisation_max": 0.98
       },
       "camber": {
-        "target_inner_outer_delta_celsius": 3.0
+        "target_max_slip_angle": 0.18
       },
       "anti_roll_bar": {
         "target_roll_balance_ratio": 0.80
@@ -99,7 +97,7 @@
         "target_travel_utilisation_max": 0.85
       },
       "camber": {
-        "target_inner_outer_delta_celsius": 12.0
+        "target_max_slip_angle": 0.20
       },
       "anti_roll_bar": {
         "target_roll_balance_ratio": 1.30
@@ -113,7 +111,7 @@
         "target_travel_utilisation_max": 0.75
       },
       "camber": {
-        "target_inner_outer_delta_celsius": 1.0
+        "target_max_slip_angle": 0.05
       },
       "anti_roll_bar": {
         "target_roll_balance_ratio": 1.50
