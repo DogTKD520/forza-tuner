@@ -297,8 +297,9 @@ async def start_session(
     return {"session_id": created.id, "status": "recording"}
 
 
-@router.post("/sessions/stop")
+@router.post("/sessions/{session_id}/stop")
 async def stop_session(
+    session_id: int,
     request: Request,
     db: Annotated[Session, Depends(get_session)],
 ):
@@ -309,7 +310,6 @@ async def stop_session(
     summary = processor.stop_recording()
 
     session_repo = TelemetrySessionRepository(db)
-    session_id = request.app.state.active_session_id
     telemetry_session = session_repo.get_session(session_id)
     if telemetry_session:
         telemetry_session.status = "completed"

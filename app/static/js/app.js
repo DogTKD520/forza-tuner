@@ -356,8 +356,12 @@ app.startSession = async function () {
 };
 
 app.stopSession = async function () {
+  if (!state.activeSessionId) {
+    showToast('No active session to stop', 'error');
+    return;
+  }
   try {
-    const resp = await fetch('/api/sessions/stop', { method: 'POST' });
+    const resp = await fetch(`/api/sessions/${state.activeSessionId}/stop`, { method: 'POST' });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     $('btn-start-session').disabled = false;
