@@ -126,22 +126,21 @@ function lerpColor(a, b, t) {
   return `rgb(${r},${g},${bl})`;
 }
 
-function updateTireZones(corner, temps) {
-  if (!temps || temps.length < 3) return;
-  ['i', 'c', 'o'].forEach((zone, idx) => {
-    const el = $(`tz-${corner}-${zone}`);
-    if (el) {
-      const color = tempToColor(temps[idx]);
-      el.style.background = color;
-      el.title = `${temps[idx].toFixed(0)}°C`;
-      el.textContent = `${temps[idx].toFixed(0)}`;
-    }
-  });
+function updateTireZones(corner, temp) {
+  if (temp == null) return;
+  const el = $(`tz-${corner}`);
+  if (el) {
+    const color = tempToColor(temp);
+    el.style.background = color;
+    el.title = `${temp.toFixed(0)}°C`;
+    el.textContent = `${temp.toFixed(0)}`;
+  }
 }
 
 function setSuspBar(corner, travel) {
   const el = $(`susp-${corner}`);
-  if (el) el.style.width = `${Math.min((travel || 0) * 100, 100)}%`;
+  // Ensure travel (0.0 to 1.0) maps to a percentage (0 to 100)
+  if (el) el.style.width = `${Math.max(0, Math.min((travel || 0) * 100, 100))}%`;
 }
 
 // ── Game profile toggle ──────────────────────────────────────
