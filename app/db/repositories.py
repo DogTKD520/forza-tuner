@@ -138,6 +138,14 @@ class TelemetrySessionRepository:
         self._session.refresh(telemetry_session)
         return telemetry_session
 
+    def delete_session(self, session_id: int, user_id: Optional[str] = None) -> bool:
+        session_to_delete = self.get_session(session_id, user_id)
+        if session_to_delete:
+            self._session.delete(session_to_delete)
+            self._session.commit()
+            return True
+        return False
+
 
 # ---------------------------------------------------------------------------
 # TuningRecommendation repository

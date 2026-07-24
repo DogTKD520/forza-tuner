@@ -362,15 +362,23 @@ app.stopSession = async function () {
   try {
     const resp = await fetch(`/api/sessions/${state.activeSessionId}/stop`, { method: 'POST' });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
 
     $('btn-start-session').disabled = false;
     $('btn-stop-session').disabled = true;
-    $('btn-analyze').disabled = false;
     $('rec-dot').className = 'status-dot';
     $('rec-label').textContent = 'Idle';
     clearInterval(state.sessionTimerInterval);
 
-    showToast('Session stopped — ready to analyse', 'info');
+    if (data.status === 'discarded') {
+      $('session-timer').textContent = '00:00';
+      $('btn-analyze').disabled = true;
+      state.activeSessionId = null;
+      showToast('No data received, session discarded', 'info');
+    } else {
+      $('btn-analyze').disabled = false;
+      showToast('Session stopped — ready to analyse', 'info');
+    }
   } catch (err) {
     showToast(`Could not stop session: ${err.message}`, 'error');
   }

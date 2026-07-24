@@ -311,6 +311,12 @@ async def stop_session(
 
     session_repo = TelemetrySessionRepository(db)
     telemetry_session = session_repo.get_session(session_id)
+    
+    if summary.get("total_frames", 0) == 0:
+        if telemetry_session:
+            session_repo.delete_session(session_id)
+        return {"status": "discarded", "message": "No data recorded"}
+
     if telemetry_session:
         telemetry_session.status = "completed"
         telemetry_session.ended_at = datetime.now(timezone.utc)
