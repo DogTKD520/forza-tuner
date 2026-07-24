@@ -146,6 +146,12 @@ class ForzaPacketParser:
     def parse(
         self, raw_bytes: bytes, game_type_hint: Literal["FM", "FH"] = "FM"
     ) -> TelemetryFrame:
+        # Debug: Dump first FH packet to logs
+        if not hasattr(self, "_debug_dumped") and len(raw_bytes) == 324:
+            import logging
+            logging.getLogger(__name__).info("RAW FH PACKET (HEX): %s", raw_bytes.hex())
+            self._debug_dumped = True
+
         # Dispatch by precise packet length
         pkt_len = len(raw_bytes)
         
