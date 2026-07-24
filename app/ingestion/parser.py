@@ -170,12 +170,17 @@ class ForzaPacketParser:
 
     def _parse_fm(self, data: bytes, game_type: str) -> TelemetryFrame:
         sled = _SLED_STRUCT.unpack_from(data, 0)
-        dash = _DASH_STRUCT.unpack_from(data, 232)
+        # Dash block starts immediately at 232
+        dash_offset = 232
+        dash = _DASH_STRUCT.unpack_from(data, dash_offset)
+        
+        # FM: suspension travel is valid at sled[17-20] (byte offset 68)
+        suspension = sled[17:21]
         
         # Temps are in Fahrenheit, convert to Celsius
         tire_temps = [(t - 32.0) * 5.0 / 9.0 for t in dash[6:10]]
 
-        return self._build_frame(sled, dash, tire_temps, game_type)
+        return self._build_frame(sled, dash, suspension, tire_temps, game_type)
 
     # ------------------------------------------------------------------
     # Forza Horizon
@@ -183,13 +188,19 @@ class ForzaPacketParser:
 
     def _parse_fh(self, data: bytes) -> TelemetryFrame:
         sled = _SLED_STRUCT.unpack_from(data, 0)
-        # FH has a 12-byte padding gap after SLED
-        dash = _DASH_STRUCT.unpack_from(data, 232 + 12)
+        # FH: Dash block starts at 244 (skipping the 12-byte padding)
+        dash_offset = 244
+        dash = _DASH_STRUCT.unpack_from(data, dash_offset)
+
+        # FH: normalized_suspension (sled[17]) is broken. We use suspension_travel_meters
+        # which is normally at byte 196, but shifted by 12 bytes in FH.
+        susp_offset = 196 + 12
+        suspension = struct.unpack_from("<4f", data, susp_offset)
 
         # Temps are in Fahrenheit, convert to Celsius
         tire_temps = [(t - 32.0) * 5.0 / 9.0 for t in dash[6:10]]
 
-        return self._build_frame(sled, dash, tire_temps, "FH")
+        return self._build_frame(sled, dash, suspension, tire_temps, "FH")
 
     # ------------------------------------------------------------------
     # Shared construction
@@ -199,6 +210,7 @@ class ForzaPacketParser:
         self,
         sled: tuple,
         dash: tuple,
+        suspension: tuple[float, float, float, float] | list[float],
         tire_temps: list[float],
         game_type: str,
     ) -> TelemetryFrame:
@@ -217,10 +229,10 @@ class ForzaPacketParser:
             tire_temp_fr=tire_temps[1],
             tire_temp_rl=tire_temps[2],
             tire_temp_rr=tire_temps[3],
-            suspension_fl=sled[17],
-            suspension_fr=sled[18],
-            suspension_rl=sled[19],
-            suspension_rr=sled[20],
+            suspension_fl=suspension[0],
+            suspension_fr=suspension[1],
+            suspension_rl=suspension[2],
+            suspension_rr=suspension[3],
             wheel_speed_fl=sled[25],
             wheel_speed_fr=sled[26],
             wheel_speed_rl=sled[27],

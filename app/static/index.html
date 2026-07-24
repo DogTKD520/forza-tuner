@@ -141,10 +141,41 @@
         </div>
       </div>
 
-      <!-- Tire heat + Suspension row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div class="col-right">
+        <!-- Session control -->
+        <div class="card" id="session-card">
+          <div class="card-header">
+            <span class="card-title">Session</span>
+            <span id="session-timer" style="font-family:'Rajdhani',sans-serif;color:var(--accent);font-size:1rem;font-weight:600">00:00</span>
+          </div>
 
-        <!-- Tire temperatures -->
+          <div class="session-controls" style="margin-bottom:0.75rem">
+            <button class="btn btn-primary btn-full" id="btn-start-session" onclick="app.startSession()">
+              ▶ Start Recording
+            </button>
+            <button class="btn btn-ghost" id="btn-stop-session" onclick="app.stopSession()" disabled>
+              ■ Stop
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0.75rem">
+            <label class="form-label">Tuning Goal / Discipline</label>
+            <div class="goal-badge-selector" id="analysis-goal-selector">
+              <button type="button" class="goal-badge active" data-goal="street_road" onclick="app.selectGoal('street_road')">🏁 Road</button>
+              <button type="button" class="goal-badge" data-goal="dirt_rally" onclick="app.selectGoal('dirt_rally')">🌲 Dirt</button>
+              <button type="button" class="goal-badge" data-goal="off_road" onclick="app.selectGoal('off_road')">🏔 Off-Road</button>
+              <button type="button" class="goal-badge" data-goal="drift" onclick="app.selectGoal('drift')">💨 Drift</button>
+              <button type="button" class="goal-badge" data-goal="drag" onclick="app.selectGoal('drag')">⚡ Drag</button>
+            </div>
+            <input type="hidden" id="tuning-goal" value="street_road" />
+          </div>
+
+          <button class="btn btn-danger btn-full" id="btn-analyze" onclick="app.analyzeSession()" disabled>
+            ⚡ Analyse Session
+          </button>
+        </div>
+
+        <!-- Tire Temperatures -->
         <div class="card">
           <div class="card-header">
             <span class="card-title">Tyre Temperatures</span>
@@ -221,50 +252,18 @@
 
     <!-- ── TAB 2: TUNING ───────────────────────────────── -->
     <div id="tab-tuning" class="tab-content">
-      <div class="tuning-desktop-grid">
-        <!-- Session control -->
-        <div class="card" id="session-card">
-          <div class="card-header">
-            <span class="card-title">Session</span>
-            <span id="session-timer" style="font-family:'Rajdhani',sans-serif;color:var(--accent);font-size:1rem;font-weight:600">00:00</span>
-          </div>
+      <div class="setup-desktop-container">
 
-          <div class="session-controls" style="margin-bottom:0.75rem">
-            <button class="btn btn-primary btn-full" id="btn-start-session" onclick="app.startSession()">
-              ▶ Start Recording
-            </button>
-            <button class="btn btn-ghost" id="btn-stop-session" onclick="app.stopSession()" disabled>
-              ■ Stop
-            </button>
-          </div>
-
-          <div class="form-group" style="margin-bottom:0.75rem">
-            <label class="form-label">Tuning Goal / Discipline</label>
-            <div class="goal-badge-selector" id="analysis-goal-selector">
-              <button type="button" class="goal-badge active" data-goal="street_road" onclick="app.selectGoal('street_road')">🏁 Road</button>
-              <button type="button" class="goal-badge" data-goal="dirt_rally" onclick="app.selectGoal('dirt_rally')">🌲 Dirt</button>
-              <button type="button" class="goal-badge" data-goal="off_road" onclick="app.selectGoal('off_road')">🏔 Off-Road</button>
-              <button type="button" class="goal-badge" data-goal="drift" onclick="app.selectGoal('drift')">💨 Drift</button>
-              <button type="button" class="goal-badge" data-goal="drag" onclick="app.selectGoal('drag')">⚡ Drag</button>
-            </div>
-            <input type="hidden" id="tuning-goal" value="street_road" />
-          </div>
-
-          <button class="btn btn-danger btn-full" id="btn-analyze" onclick="app.analyzeSession()" disabled>
-            ⚡ Analyse Session
-          </button>
-
-          <div id="task-status-row" style="display:none;margin-top:0.6rem;font-size:0.75rem;color:var(--text-secondary);">
-            <div class="spinner"></div>
-            <span id="task-status-label" style="margin-left:0.4rem">Queued for GPU…</span>
-          </div>
-        </div>
 
         <!-- ── Recommendations panel ──────────────────────── -->
         <div class="card" id="recommendations-card">
           <div class="card-header">
             <span class="card-title">Tuning Recommendations</span>
             <div style="display:flex;align-items:center;gap:0.75rem;">
+              <div id="task-status-row" style="display:none;font-size:0.75rem;color:var(--text-secondary);align-items:center;">
+                <div class="spinner"></div>
+                <span id="task-status-label" style="margin-left:0.4rem;margin-right:0.4rem;">Queued for GPU…</span>
+              </div>
               <div class="toggle-row" style="padding:0">
                 <span class="toggle-label" style="margin-right:0.4rem">AI Assist</span>
                 <label class="toggle">

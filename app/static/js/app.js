@@ -415,10 +415,12 @@ app.analyzeSession = async function () {
     const data = await resp.json();
 
     if (data.mode === 'llm') {
+      app.switchTab('tab-tuning');
       $('task-status-row').style.display = 'flex';
       $('task-status-label').textContent = 'Queued for GPU…';
       pollTaskStatus(data.task_id);
     } else {
+      app.switchTab('tab-tuning');
       renderRecommendations(data);
     }
   } catch (err) {
