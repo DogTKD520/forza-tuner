@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 _SYSTEM_PROMPT = """\
 You are an expert Forza racing car tuning engineer.
 Analyse the telemetry session metrics and current vehicle setup provided by the user.
+The vehicle setup parameters contain `min`, `current`, and `max` bounds.
+Ensure your recommended values STRICTLY fall within the provided min and max bounds for each parameter.
+
 Respond ONLY with a valid JSON object matching this exact schema:
 {
   "summary": "<one paragraph overview>",
@@ -145,6 +148,6 @@ class OllamaAnalyzer(AnalysisStrategy):
             f"DISCIPLINE PHYSICS OBJECTIVE: {guidance}\n\n"
             "SESSION METRICS:\n"
             f"{json.dumps(session_metrics, indent=2)}\n\n"
-            "CURRENT VEHICLE SETUP:\n"
-            f"{json.dumps(setup_data, indent=2)}"
+            "CURRENT VEHICLE SETUP (With Bounds):\n"
+            f"{json.dumps(setup_data, default=lambda o: o.__dict__, indent=2)}"
         )

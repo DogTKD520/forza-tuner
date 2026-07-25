@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 import pytest_asyncio
 
-from app.analysis.base import AnalysisStrategy, SetupSnapshot, TuningRecommendationResult
+from app.analysis.base import AnalysisStrategy, SetupSnapshot, TuningRecommendationResult, BoundValue
 from app.analysis.gpu_queue import AnalysisQueue, TaskStatus
 
 
@@ -39,13 +39,12 @@ class _StubAnalyzer(AnalysisStrategy):
 
 
 def _dummy_setup() -> SetupSnapshot:
-    return SetupSnapshot(
-        tire_pressure_front=30.0, tire_pressure_rear=30.0,
-        camber_front=-2.5, camber_rear=-1.5,
-        springs_front=500.0, springs_rear=450.0,
-        arb_front=25.0, arb_rear=20.0,
-        bump_front=5.0, bump_rear=5.0,
-        rebound_front=5.0, rebound_rear=5.0,
+    return SetupSnapshot(tire_pressure_front=BoundValue(None, 30.0, None), tire_pressure_rear=BoundValue(None, 30.0, None),
+        camber_front=BoundValue(None, -2.5, None), camber_rear=BoundValue(None, -1.5, None),
+        springs_front=BoundValue(None, 500.0, None), springs_rear=BoundValue(None, 450.0, None),
+        arb_front=BoundValue(None, 25.0, None), arb_rear=BoundValue(None, 20.0, None),
+        bump_front=BoundValue(None, 5.0, None), bump_rear=BoundValue(None, 5.0, None),
+        rebound_front=BoundValue(None, 5.0, None), rebound_rear=BoundValue(None, 5.0, None),
     )
 
 

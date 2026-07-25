@@ -8,6 +8,22 @@
   <link rel="stylesheet" href="/css/styles.css" />
   <!-- Chart.js for live telemetry visualisation -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+
+  <style>
+    .bound-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 0.25rem;
+    }
+    .bound-input {
+      background-color: var(--bg-dark);
+      color: var(--text-muted);
+    }
+    .bound-input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -359,6 +375,19 @@
                 <label class="checkbox-label"><input type="checkbox" id="tuneable-aero-front" checked onchange="app.updateVisibility()" /><span>Front Race Aero</span></label>
                 <label class="checkbox-label"><input type="checkbox" id="tuneable-aero-rear" checked onchange="app.updateVisibility()" /><span>Rear Race Aero</span></label>
               </div>
+
+              <div class="form-group" style="margin-top:1rem">
+                <label class="form-label" for="suspension-type">Suspension Type</label>
+                <select id="suspension-type" class="form-select">
+                  <option value="Stock">Stock</option>
+                  <option value="Street">Street</option>
+                  <option value="Sport">Sport</option>
+                  <option value="Race" selected>Race</option>
+                  <option value="Rally">Rally</option>
+                  <option value="Drift">Drift</option>
+                  <option value="Off-Road">Off-Road</option>
+                </select>
+              </div>
               <div class="form-group" style="margin-top:1rem">
                 <label class="form-label" for="diff-upgrade-type">Differential Type</label>
                 <select id="diff-upgrade-type" class="form-select">
@@ -380,22 +409,50 @@
             <div class="accordion-content">
               <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Tyre Pressure (<span class="unit-pressure">PSI</span>)</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="psi-front">Front</label><input type="number" id="psi-front" step="0.5" value="30.0" /></div>
-                <div class="form-group"><label class="form-label" for="psi-rear">Rear</label><input type="number" id="psi-rear" step="0.5" value="30.0" /></div>
+                <div class="form-group"><label class="form-label" for="psi-front">Front</label><div class="bound-row">
+                    <input type="number" id="psi-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="psi-front" step="0.5" value="30.0"/>
+                    <input type="number" id="psi-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="psi-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="psi-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="psi-rear" step="0.5" value="30.0"/>
+                    <input type="number" id="psi-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
               <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Camber (°)</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="camber-front">Front</label><input type="number" id="camber-front" step="0.1" value="-2.5" /></div>
-                <div class="form-group"><label class="form-label" for="camber-rear">Rear</label><input type="number" id="camber-rear" step="0.1" value="-1.5" /></div>
+                <div class="form-group"><label class="form-label" for="camber-front">Front</label><div class="bound-row">
+                    <input type="number" id="camber-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="camber-front" step="0.1" value="-2.5"/>
+                    <input type="number" id="camber-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="camber-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="camber-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="camber-rear" step="0.1" value="-1.5"/>
+                    <input type="number" id="camber-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
               <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Toe (°)</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="toe-front">Front</label><input type="number" id="toe-front" step="0.1" value="0.0" /></div>
-                <div class="form-group"><label class="form-label" for="toe-rear">Rear</label><input type="number" id="toe-rear" step="0.1" value="0.0" /></div>
+                <div class="form-group"><label class="form-label" for="toe-front">Front</label><div class="bound-row">
+                    <input type="number" id="toe-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="toe-front" step="0.1" value="0.0"/>
+                    <input type="number" id="toe-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="toe-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="toe-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="toe-rear" step="0.1" value="0.0"/>
+                    <input type="number" id="toe-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
               <div class="form-group" style="margin-top:0.25rem">
                 <label class="form-label" for="caster-front">Front Caster Angle (°)</label>
-                <input type="number" id="caster-front" step="0.1" value="5.0" />
+                <div class="bound-row">
+                    <input type="number" id="caster-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="caster-front" step="0.1" value="5.0"/>
+                    <input type="number" id="caster-front-max" class="bound-input" placeholder="Max" />
+                  </div>
               </div>
             </div>
           </details>
@@ -406,13 +463,29 @@
             <div class="accordion-content">
               <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Springs</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="springs-front">Front</label><input type="number" id="springs-front" step="1" value="500" /></div>
-                <div class="form-group"><label class="form-label" for="springs-rear">Rear</label><input type="number" id="springs-rear" step="1" value="450" /></div>
+                <div class="form-group"><label class="form-label" for="springs-front">Front</label><div class="bound-row">
+                    <input type="number" id="springs-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="springs-front" step="1" value="500"/>
+                    <input type="number" id="springs-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="springs-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="springs-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="springs-rear" step="1" value="450"/>
+                    <input type="number" id="springs-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
               <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Ride Height</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="ride-height-front">Front</label><input type="number" id="ride-height-front" step="0.1" value="5.0" /></div>
-                <div class="form-group"><label class="form-label" for="ride-height-rear">Rear</label><input type="number" id="ride-height-rear" step="0.1" value="5.0" /></div>
+                <div class="form-group"><label class="form-label" for="ride-height-front">Front</label><div class="bound-row">
+                    <input type="number" id="ride-height-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="ride-height-front" step="0.1" value="5.0"/>
+                    <input type="number" id="ride-height-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="ride-height-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="ride-height-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="ride-height-rear" step="0.1" value="5.0"/>
+                    <input type="number" id="ride-height-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
             </div>
           </details>
@@ -422,8 +495,16 @@
             <summary class="accordion-header">Anti-Roll Bars</summary>
             <div class="accordion-content">
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="arb-front">Front</label><input type="number" id="arb-front" step="1" value="25" min="1" max="65" /></div>
-                <div class="form-group"><label class="form-label" for="arb-rear">Rear</label><input type="number" id="arb-rear" step="1" value="20" min="1" max="65" /></div>
+                <div class="form-group"><label class="form-label" for="arb-front">Front</label><div class="bound-row">
+                    <input type="number" id="arb-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="arb-front" step="1" value="25" min="1" max="65"/>
+                    <input type="number" id="arb-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="arb-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="arb-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="arb-rear" step="1" value="20" min="1" max="65"/>
+                    <input type="number" id="arb-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
             </div>
           </details>
@@ -434,13 +515,29 @@
             <div class="accordion-content">
               <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Rebound Stiffness</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="rebound-front">Front</label><input type="number" id="rebound-front" step="0.1" value="5.0" /></div>
-                <div class="form-group"><label class="form-label" for="rebound-rear">Rear</label><input type="number" id="rebound-rear" step="0.1" value="5.0" /></div>
+                <div class="form-group"><label class="form-label" for="rebound-front">Front</label><div class="bound-row">
+                    <input type="number" id="rebound-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="rebound-front" step="0.1" value="5.0"/>
+                    <input type="number" id="rebound-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="rebound-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="rebound-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="rebound-rear" step="0.1" value="5.0"/>
+                    <input type="number" id="rebound-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
               <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Bump Stiffness</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="bump-front">Front</label><input type="number" id="bump-front" step="0.1" value="5.0" /></div>
-                <div class="form-group"><label class="form-label" for="bump-rear">Rear</label><input type="number" id="bump-rear" step="0.1" value="5.0" /></div>
+                <div class="form-group"><label class="form-label" for="bump-front">Front</label><div class="bound-row">
+                    <input type="number" id="bump-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="bump-front" step="0.1" value="5.0"/>
+                    <input type="number" id="bump-front-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="bump-rear">Rear</label><div class="bound-row">
+                    <input type="number" id="bump-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="bump-rear" step="0.1" value="5.0"/>
+                    <input type="number" id="bump-rear-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
             </div>
           </details>
@@ -452,11 +549,19 @@
               <div class="form-row">
                 <div class="form-group" id="grp-aero-front">
                   <label class="form-label" for="downforce-front">Front Downforce</label>
-                  <input type="number" id="downforce-front" value="100" min="0" max="1000" />
+                  <div class="bound-row">
+                    <input type="number" id="downforce-front-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="downforce-front" value="100" min="0" max="1000"/>
+                    <input type="number" id="downforce-front-max" class="bound-input" placeholder="Max" />
+                  </div>
                 </div>
                 <div class="form-group" id="grp-aero-rear">
                   <label class="form-label" for="downforce-rear">Rear Downforce</label>
-                  <input type="number" id="downforce-rear" value="150" min="0" max="1000" />
+                  <div class="bound-row">
+                    <input type="number" id="downforce-rear-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="downforce-rear" value="150" min="0" max="1000"/>
+                    <input type="number" id="downforce-rear-max" class="bound-input" placeholder="Max" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -467,8 +572,16 @@
             <summary class="accordion-header">Brakes</summary>
             <div class="accordion-content">
               <div class="form-row">
-                <div class="form-group"><label class="form-label" for="brake-balance">Balance (%)</label><input type="number" id="brake-balance" step="1" value="50" min="0" max="100" /></div>
-                <div class="form-group"><label class="form-label" for="brake-pressure">Pressure (%)</label><input type="number" id="brake-pressure" step="1" value="100" min="0" max="200" /></div>
+                <div class="form-group"><label class="form-label" for="brake-balance">Balance (%)</label><div class="bound-row">
+                    <input type="number" id="brake-balance-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="brake-balance" step="1" value="50" min="0" max="100"/>
+                    <input type="number" id="brake-balance-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label" for="brake-pressure">Pressure (%)</label><div class="bound-row">
+                    <input type="number" id="brake-pressure-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="brake-pressure" step="1" value="100" min="0" max="200"/>
+                    <input type="number" id="brake-pressure-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
             </div>
           </details>
@@ -480,20 +593,40 @@
               <div id="diff-front-grp">
                 <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Front Differential (%)</div>
                 <div class="form-row">
-                  <div class="form-group"><label class="form-label" for="diff-front-accel">Acceleration</label><input type="number" id="diff-front-accel" step="1" value="25" min="0" max="100" /></div>
-                  <div class="form-group"><label class="form-label" for="diff-front-decel">Deceleration</label><input type="number" id="diff-front-decel" step="1" value="0" min="0" max="100" /></div>
+                  <div class="form-group"><label class="form-label" for="diff-front-accel">Acceleration</label><div class="bound-row">
+                    <input type="number" id="diff-front-accel-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="diff-front-accel" step="1" value="25" min="0" max="100"/>
+                    <input type="number" id="diff-front-accel-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                  <div class="form-group"><label class="form-label" for="diff-front-decel">Deceleration</label><div class="bound-row">
+                    <input type="number" id="diff-front-decel-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="diff-front-decel" step="1" value="0" min="0" max="100"/>
+                    <input type="number" id="diff-front-decel-max" class="bound-input" placeholder="Max" />
+                  </div></div>
                 </div>
               </div>
               <div id="diff-rear-grp">
                 <div class="form-label" style="margin-bottom:0.4rem;margin-top:0.25rem">Rear Differential (%)</div>
                 <div class="form-row">
-                  <div class="form-group"><label class="form-label" for="diff-rear-accel">Acceleration</label><input type="number" id="diff-rear-accel" step="1" value="50" min="0" max="100" /></div>
-                  <div class="form-group"><label class="form-label" for="diff-rear-decel">Deceleration</label><input type="number" id="diff-rear-decel" step="1" value="15" min="0" max="100" /></div>
+                  <div class="form-group"><label class="form-label" for="diff-rear-accel">Acceleration</label><div class="bound-row">
+                    <input type="number" id="diff-rear-accel-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="diff-rear-accel" step="1" value="50" min="0" max="100"/>
+                    <input type="number" id="diff-rear-accel-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                  <div class="form-group"><label class="form-label" for="diff-rear-decel">Deceleration</label><div class="bound-row">
+                    <input type="number" id="diff-rear-decel-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="diff-rear-decel" step="1" value="15" min="0" max="100"/>
+                    <input type="number" id="diff-rear-decel-max" class="bound-input" placeholder="Max" />
+                  </div></div>
                 </div>
               </div>
               <div id="diff-center-grp" class="form-group" style="margin-top:0.25rem">
                 <label class="form-label" for="diff-center-balance">Center Balance (%)</label>
-                <input type="number" id="diff-center-balance" step="1" value="65" min="0" max="100" />
+                <div class="bound-row">
+                    <input type="number" id="diff-center-balance-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="diff-center-balance" step="1" value="65" min="0" max="100"/>
+                    <input type="number" id="diff-center-balance-max" class="bound-input" placeholder="Max" />
+                  </div>
               </div>
             </div>
           </details>
@@ -504,19 +637,63 @@
             <div class="accordion-content">
               <div class="form-group" style="margin-bottom:1rem">
                 <label class="form-label" for="final-drive">Final Drive Ratio</label>
-                <input type="number" id="final-drive" step="0.01" value="3.50" />
+                <div class="bound-row">
+                    <input type="number" id="final-drive-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="final-drive" step="0.01" value="3.50"/>
+                    <input type="number" id="final-drive-max" class="bound-input" placeholder="Max" />
+                  </div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-                <div class="form-group"><label class="form-label">1st Gear</label><input type="number" id="gear-1" step="0.01" value="2.89" /></div>
-                <div class="form-group"><label class="form-label">2nd Gear</label><input type="number" id="gear-2" step="0.01" value="1.99" /></div>
-                <div class="form-group"><label class="form-label">3rd Gear</label><input type="number" id="gear-3" step="0.01" value="1.49" /></div>
-                <div class="form-group"><label class="form-label">4th Gear</label><input type="number" id="gear-4" step="0.01" value="1.16" /></div>
-                <div class="form-group"><label class="form-label">5th Gear</label><input type="number" id="gear-5" step="0.01" value="0.94" /></div>
-                <div class="form-group"><label class="form-label">6th Gear</label><input type="number" id="gear-6" step="0.01" value="0.78" /></div>
-                <div class="form-group"><label class="form-label">7th Gear</label><input type="number" id="gear-7" step="0.01" value="0.65" /></div>
-                <div class="form-group"><label class="form-label">8th Gear</label><input type="number" id="gear-8" step="0.01" value="0.55" /></div>
-                <div class="form-group"><label class="form-label">9th Gear</label><input type="number" id="gear-9" step="0.01" value="0.48" /></div>
-                <div class="form-group"><label class="form-label">10th Gear</label><input type="number" id="gear-10" step="0.01" value="0.42" /></div>
+                <div class="form-group"><label class="form-label">1st Gear</label><div class="bound-row">
+                    <input type="number" id="gear-1-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-1" step="0.01" value="2.89"/>
+                    <input type="number" id="gear-1-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">2nd Gear</label><div class="bound-row">
+                    <input type="number" id="gear-2-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-2" step="0.01" value="1.99"/>
+                    <input type="number" id="gear-2-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">3rd Gear</label><div class="bound-row">
+                    <input type="number" id="gear-3-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-3" step="0.01" value="1.49"/>
+                    <input type="number" id="gear-3-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">4th Gear</label><div class="bound-row">
+                    <input type="number" id="gear-4-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-4" step="0.01" value="1.16"/>
+                    <input type="number" id="gear-4-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">5th Gear</label><div class="bound-row">
+                    <input type="number" id="gear-5-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-5" step="0.01" value="0.94"/>
+                    <input type="number" id="gear-5-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">6th Gear</label><div class="bound-row">
+                    <input type="number" id="gear-6-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-6" step="0.01" value="0.78"/>
+                    <input type="number" id="gear-6-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">7th Gear</label><div class="bound-row">
+                    <input type="number" id="gear-7-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-7" step="0.01" value="0.65"/>
+                    <input type="number" id="gear-7-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">8th Gear</label><div class="bound-row">
+                    <input type="number" id="gear-8-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-8" step="0.01" value="0.55"/>
+                    <input type="number" id="gear-8-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">9th Gear</label><div class="bound-row">
+                    <input type="number" id="gear-9-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-9" step="0.01" value="0.48"/>
+                    <input type="number" id="gear-9-max" class="bound-input" placeholder="Max" />
+                  </div></div>
+                <div class="form-group"><label class="form-label">10th Gear</label><div class="bound-row">
+                    <input type="number" id="gear-10-min" class="bound-input" placeholder="Min" />
+                    <input type="number" id="gear-10" step="0.01" value="0.42"/>
+                    <input type="number" id="gear-10-max" class="bound-input" placeholder="Max" />
+                  </div></div>
               </div>
             </div>
           </details>

@@ -35,6 +35,7 @@ from typing import Any
 from app.analysis.base import (
     Adjustment,
     AnalysisStrategy,
+    BoundValue,
     SetupSnapshot,
     TuningRecommendationResult,
 )
@@ -205,7 +206,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
 
         def _axle_spring_adj(
             corner_names: list[str],
-            current_spring: float,
+            spring_bound: BoundValue,
             param_name: str,
         ) -> Adjustment | None:
             axle_data = [corners[c] for c in corner_names if c in corners]
@@ -234,12 +235,21 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             else:
                 return None
 
+            current_spring = spring_bound.current
             delta = current_spring * (delta_pct / 100.0)
-            recommended = _clamp(
-                current_spring + delta,
-                current_spring * (1 - rules["max_adjustment_percent"] / 100),
-                current_spring * (1 + rules["max_adjustment_percent"] / 100),
-            )
+            
+            min_val = current_spring * (1 - rules["max_adjustment_percent"] / 100)
+            max_val = current_spring * (1 + rules["max_adjustment_percent"] / 100)
+            
+            if spring_bound.min is not None:
+                min_val = max(min_val, spring_bound.min)
+            if spring_bound.max is not None:
+                max_val = min(max_val, spring_bound.max)
+
+            recommended = _clamp(current_spring + delta, min_val, max_val)
+            if recommended == current_spring:
+                return None # maxed out bounds
+                
             return Adjustment(
                 parameter=param_name,
                 current_value=current_spring,
@@ -303,7 +313,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
                 "Stiffen front ARB."
             )
             param = "arb_front"
-            current = setup.arb_front
+            bound_val = setup.arb_front
         else:
             # Rear rolling more → stiffen rear ARB
             delta_pct = rules["step_percent"]
@@ -312,7 +322,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
                 "Stiffen rear ARB."
             )
             param = "arb_rear"
-            current = setup.arb_rear
+            bound_val = setup.arb_rear
 
         if not setup.tuneable_arbs:
             adjustments.append(
@@ -327,12 +337,20 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             )
             return
 
+        current = bound_val.current
         delta = current * (delta_pct / 100.0)
-        recommended = _clamp(
-            current + delta,
-            current * (1 - rules["max_adjustment_percent"] / 100),
-            current * (1 + rules["max_adjustment_percent"] / 100),
-        )
+        
+        min_val = current * (1 - rules["max_adjustment_percent"] / 100)
+        max_val = current * (1 + rules["max_adjustment_percent"] / 100)
+        if bound_val.min is not None:
+            min_val = max(min_val, bound_val.min)
+        if bound_val.max is not None:
+            max_val = min(max_val, bound_val.max)
+            
+        recommended = _clamp(current + delta, min_val, max_val)
+        if recommended == current:
+            return
+            
         adjustments.append(
             Adjustment(
                 parameter=param,
@@ -425,7 +443,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         self,
         avg_temp: float,
         avg_combined_slip: float,
-        current_psi: float,
+        pressure_bound: BoundValue,
         param_name: str,
         pressure_rules: dict,
         compound_info: dict,
@@ -457,20 +475,31 @@ class MathBaselineAnalyzer(AnalysisStrategy):
                 return None
 
         psi_change = _clamp(psi_change, -pressure_rules["max_adjustment_psi"], pressure_rules["max_adjustment_psi"])
-        recommended = round(current_psi + psi_change, 1)
+        
+        current_psi = pressure_bound.current
+        min_val = current_psi - pressure_rules["max_adjustment_psi"]
+        max_val = current_psi + pressure_rules["max_adjustment_psi"]
+        if pressure_bound.min is not None:
+            min_val = max(min_val, pressure_bound.min)
+        if pressure_bound.max is not None:
+            max_val = min(max_val, pressure_bound.max)
+            
+        recommended = round(_clamp(current_psi + psi_change, min_val, max_val), 1)
+        if recommended == current_psi:
+            return None
 
         return Adjustment(
             parameter=param_name,
             current_value=current_psi,
             recommended_value=recommended,
-            delta=round(psi_change, 1),
+            delta=round(recommended - current_psi, 1),
             reason=reason,
         )
 
     def _camber_adjustment(
         self,
         max_slip_angle: float,
-        current_camber: float,
+        camber_bound: BoundValue,
         param_name: str,
         camber_rules: dict,
     ) -> Adjustment | None:
@@ -487,13 +516,24 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             return None
 
         camber_change = _clamp(camber_change, -camber_rules["max_adjustment_degrees"], camber_rules["max_adjustment_degrees"])
-        recommended = round(current_camber + camber_change, 1)
+        current_camber = camber_bound.current
+        
+        min_val = current_camber - camber_rules["max_adjustment_degrees"]
+        max_val = current_camber + camber_rules["max_adjustment_degrees"]
+        if camber_bound.min is not None:
+            min_val = max(min_val, camber_bound.min)
+        if camber_bound.max is not None:
+            max_val = min(max_val, camber_bound.max)
+            
+        recommended = round(_clamp(current_camber + camber_change, min_val, max_val), 1)
+        if recommended == current_camber:
+            return None
 
         return Adjustment(
             parameter=param_name,
             current_value=current_camber,
             recommended_value=recommended,
-            delta=round(camber_change, 1),
+            delta=round(recommended - current_camber, 1),
             reason=reason,
         )
 

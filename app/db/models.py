@@ -68,37 +68,10 @@ class VehicleSetup(SQLModel, table=True):
     user_id: str = Field(index=True)
     name: str
 
-    # Tyres
-    tire_pressure_front: float     # PSI
-    tire_pressure_rear: float
-
-    # Alignment
-    camber_front: float            # degrees (negative = more camber)
-    camber_rear: float
-
-    # Springs (N/mm or game unit — we store whatever the game shows)
-    springs_front: float
-    springs_rear: float
-
-    # Anti-roll bars (1–65 game scale)
-    arb_front: float
-    arb_rear: float
-
-    # Dampers
-    bump_front: float
-    bump_rear: float
-    rebound_front: float
-    rebound_rear: float
-
     # Vehicle specs & parameters
     pi_rating: int = Field(default=700)
     hp: int = Field(default=400)
     weight_lbs: float = Field(default=3000.0)
-    front_weight_pct: float = Field(default=52.0)
-    aero_front: float = Field(default=100.0)
-    aero_rear: float = Field(default=150.0)
-    tire_compound: str = Field(default="Sport")
-    lock_tire_compound: bool = Field(default=False)
 
     # Component tuneability flags (installed upgrades)
     tuneable_springs: bool = Field(default=True)
@@ -106,53 +79,27 @@ class VehicleSetup(SQLModel, table=True):
     tuneable_dampers: bool = Field(default=True)
     tuneable_aero_front: bool = Field(default=True)
     tuneable_aero_rear: bool = Field(default=True)
+    suspension_type: str = Field(default="Race")
     diff_upgrade_type: str = Field(default="Race")
-
-    # Drivetrain
+    tire_compound: str = Field(default="Sport")
+    lock_tire_compound: bool = Field(default=False)
     drivetrain: str = Field(default="AWD")
-    
-    # Gearing
-    final_drive: float = Field(default=3.50)
-    gear_1: float = Field(default=2.89)
-    gear_2: float = Field(default=1.99)
-    gear_3: float = Field(default=1.49)
-    gear_4: float = Field(default=1.16)
-    gear_5: float = Field(default=0.94)
-    gear_6: float = Field(default=0.78)
-    gear_7: float = Field(default=0.65)
-    gear_8: float = Field(default=0.55)
-    gear_9: float = Field(default=0.48)
-    gear_10: float = Field(default=0.42)
-
-    # Alignment Extensions
-    toe_front: float = Field(default=0.0)
-    toe_rear: float = Field(default=0.0)
-    caster_front: float = Field(default=5.0)
-
-    # Ride Height
-    ride_height_front: float = Field(default=5.0)
-    ride_height_rear: float = Field(default=5.0)
-
-    # Aero Extensions
-    downforce_front: float = Field(default=100.0)
-    downforce_rear: float = Field(default=150.0)
-
-    # Brakes
-    brake_balance: float = Field(default=50.0)
-    brake_pressure: float = Field(default=100.0)
-
-    # Differential Extensions
-    diff_front_accel: float = Field(default=25.0)
-    diff_front_decel: float = Field(default=0.0)
-    diff_rear_accel: float = Field(default=50.0)
-    diff_rear_decel: float = Field(default=15.0)
-    diff_center_balance: float = Field(default=65.0)
 
     # Discipline / Goal
     tuning_goal: str = Field(default="street_road")
 
+    # JSON blob of all tunable sliders and bounded values
+    tunables_json: str = Field(default="{}")
+
     created_at: datetime = Field(default_factory=_utcnow)
 
+    @property
+    def tunables(self) -> dict:
+        return json.loads(self.tunables_json)
+
+    @tunables.setter
+    def tunables(self, value: dict) -> None:
+        self.tunables_json = json.dumps(value)
 
 
 # ---------------------------------------------------------------------------

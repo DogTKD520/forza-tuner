@@ -11,8 +11,9 @@ import pytest
 
 from app.ingestion.parser import (
     ForzaPacketParser,
-    _SLED_STRUCT,
-    _DASH_STRUCT,
+    _SLED_FMT as PARSER_SLED_FMT,
+    _DASH_FMT as PARSER_DASH_FMT,
+    _FM_STRUCT,
 )
 
 # Reference offset tables independent of parser.py
@@ -134,8 +135,9 @@ class TestForzaPacketParser:
 
     def test_module_load_struct_sizes(self):
         # Reference confirmed by csutorasa/go-forza-telemetry & 0x20F/forza-telemetry
-        assert _SLED_STRUCT.size == 232
-        assert _DASH_STRUCT.size == 79
+        assert struct.calcsize("<" + PARSER_SLED_FMT) == 232
+        assert struct.calcsize("<" + PARSER_DASH_FMT) == 79
+        assert _FM_STRUCT.size == 311
 
     def test_fm_speed_parsed_correctly(self):
         packet = _build_fm_packet(speed=55.6)

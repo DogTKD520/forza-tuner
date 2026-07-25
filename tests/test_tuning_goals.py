@@ -5,26 +5,27 @@ Tests for Tuning Goal / Discipline customization across analyzers.
 import pytest
 from app.analysis.math_analyzer import MathBaselineAnalyzer
 from app.analysis.ollama_analyzer import OllamaAnalyzer
-from app.analysis.base import SetupSnapshot
+from app.analysis.base import SetupSnapshot, BoundValue
 
 
 def _default_setup(**overrides) -> SetupSnapshot:
     defaults = dict(
-        tire_pressure_front=30.0,
-        tire_pressure_rear=30.0,
-        camber_front=-2.5,
-        camber_rear=-1.5,
-        springs_front=500.0,
-        springs_rear=450.0,
-        arb_front=25.0,
-        arb_rear=20.0,
-        bump_front=5.0,
-        bump_rear=5.0,
-        rebound_front=5.0,
-        rebound_rear=5.0,
+        tire_pressure_front=BoundValue(None, 30.0, None),
+        tire_pressure_rear=BoundValue(None, 30.0, None),
+        camber_front=BoundValue(None, -2.5, None),
+        camber_rear=BoundValue(None, -1.5, None),
+        springs_front=BoundValue(None, 500.0, None),
+        springs_rear=BoundValue(None, 450.0, None),
+        arb_front=BoundValue(None, 25.0, None),
+        arb_rear=BoundValue(None, 20.0, None),
+        bump_front=BoundValue(None, 5.0, None),
+        bump_rear=BoundValue(None, 5.0, None),
+        rebound_front=BoundValue(None, 5.0, None),
+        rebound_rear=BoundValue(None, 5.0, None),
         tuning_goal="street_road",
     )
     defaults.update(overrides)
+    overrides = {k: BoundValue(None, v, None) if isinstance(v, (int, float)) and k not in ["pi_rating", "hp", "weight_lbs"] else v for k, v in overrides.items()}
     return SetupSnapshot(**defaults)
 
 
