@@ -5,7 +5,8 @@
  * so other modules can subscribe without coupling to the socket directly.
  */
 
-const WS_URL = `ws://${location.host}/ws/telemetry`;
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${wsProtocol}//${window.location.host}/ws/telemetry`;
 const RECONNECT_DELAY_MS = 3000;
 
 let socket = null;

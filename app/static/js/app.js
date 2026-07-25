@@ -250,11 +250,14 @@ app.switchTab = function (tabId) {
 app.saveSetup = async function () {
 
   const getBound = (id, defVal) => {
+    const el = $(id);
+    if (!el) return { min: null, current: defVal, max: null };
+    
     const minVal = parseFloat($(id + '-min')?.value);
     const maxVal = parseFloat($(id + '-max')?.value);
     return {
       min: isNaN(minVal) ? null : minVal,
-      current: parseFloat($(id).value) || defVal,
+      current: parseFloat(el.value) || defVal,
       max: isNaN(maxVal) ? null : maxVal,
     };
   };
@@ -290,8 +293,8 @@ app.saveSetup = async function () {
     hp,
     weight_lbs,
     front_weight_pct: getBound('front-weight-pct', 52.0),
-    aero_front: getBound('aero-front', 100.0),
-    aero_rear: getBound('aero-rear', 150.0),
+    aero_front: getBound('downforce-front', 100.0),
+    aero_rear: getBound('downforce-rear', 150.0),
     tire_compound:       $('tire-compound').value || 'Sport',
     lock_tire_compound:  $('lock-tire-compound').checked,
     tuneable_springs:    $('tuneable-springs').checked,
