@@ -298,9 +298,14 @@
       <div class="card" style="flex:1;overflow-y:auto">
         <div class="card-header">
           <span class="card-title">Vehicle Setup</span>
-          <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.72rem" onclick="app.saveSetup()">
-            Save
-          </button>
+          <div>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.72rem;margin-right:0.5rem" onclick="app.loadSetupModal()">
+              Load
+            </button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.72rem" onclick="app.saveSetup()">
+              Save
+            </button>
+          </div>
         </div>
 
         <form id="setup-form" onsubmit="return false;">
@@ -708,6 +713,18 @@
 <!-- Toast container -->
 <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
+<!-- Load Setup Modal -->
+<dialog id="load-setup-modal" class="card" style="padding: 1.5rem; max-width: 400px; width: 100%; border: none; border-radius: 12px; background: var(--bg-surface);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h3 style="margin: 0;">Load Setup</h3>
+    <button class="btn btn-ghost" onclick="document.getElementById('load-setup-modal').close()" style="padding: 4px 8px;">✕</button>
+  </div>
+  <div id="setup-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+    <!-- Populated dynamically via JS -->
+  </div>
+</dialog>
+
+<script type="module" src="/js/charts.js"></script>
 <script type="module" src="/js/app.js"></script>
 </body>
 </html>

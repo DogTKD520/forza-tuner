@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     udp_port: int = 5300
 
     # Game profile
-    default_game: Literal["FM", "FH"] = "FM"
+    default_game: Literal["FM", "FH"] = "FH"
 
     # Multi-tenancy — MVP default; swap for identity-header value in prod
     default_user_id: str = "local_admin"

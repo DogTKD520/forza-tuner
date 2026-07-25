@@ -339,6 +339,7 @@ app.saveSetup = async function () {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const saved = await resp.json();
     state.activeSetupId = saved.id;
+    localStorage.setItem('activeSetupId', saved.id);
     showToast(`Setup "${name}" saved (ID ${saved.id})`, 'success');
   } catch (err) {
     showToast(`Failed to save setup: ${err.message}`, 'error');
@@ -583,5 +584,150 @@ function renderRecommendations(data) {
   app.setUnit(storedUnit);
   app.updateVisibility();
 
+  // Try auto-loading last saved setup
+  const lastSetupId = localStorage.getItem('activeSetupId');
+  if (lastSetupId) {
+    try {
+      await app.loadSetup(lastSetupId);
+    } catch (e) {
+      console.warn("Could not auto-load setup", e);
+    }
+  }
+
   connectWebSocket();
 })();
+
+// ── Setup Loading & Modal ─────────────────────────────────────
+app.loadSetupModal = async function () {
+  try {
+    const resp = await fetch('/api/setups');
+    if (!resp.ok) throw new Error('Failed to fetch setups');
+    const setups = await resp.json();
+    
+    const list = $('setup-list');
+    list.innerHTML = '';
+    
+    if (setups.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-muted);padding:1rem;text-align:center;">No setups found.</div>';
+    } else {
+      setups.forEach(setup => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-ghost';
+        btn.style.textAlign = 'left';
+        btn.style.display = 'flex';
+        btn.style.justifyContent = 'space-between';
+        btn.innerHTML = `<span>${setup.name}</span> <span style="color:var(--text-muted)">${setup.vehicle_id ? 'Car ' + setup.vehicle_id : 'Any Car'} | PI ${setup.pi_rating}</span>`;
+        btn.onclick = async () => {
+          await app.loadSetup(setup.id);
+          $('load-setup-modal').close();
+        };
+        list.appendChild(btn);
+      });
+    }
+    
+    $('load-setup-modal').showModal();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+app.loadSetup = async function (id) {
+  const resp = await fetch(`/api/setups/${id}`);
+  if (!resp.ok) throw new Error('Setup not found');
+  const data = await resp.json();
+  
+  state.activeSetupId = data.id;
+  localStorage.setItem('activeSetupId', data.id);
+  
+  $('setup-name').value = data.name || '';
+  if ($('pi-rating')) $('pi-rating').value = data.pi_rating;
+  if ($('hp')) $('hp').value = data.hp;
+  if ($('weight')) $('weight').value = data.weight_lbs;
+  
+  if ($('tire-compound')) $('tire-compound').value = data.tire_compound;
+  if ($('lock-tire-compound')) $('lock-tire-compound').checked = data.lock_tire_compound;
+  if ($('tuneable-springs')) $('tuneable-springs').checked = data.tuneable_springs;
+  if ($('tuneable-arbs')) $('tuneable-arbs').checked = data.tuneable_arbs;
+  if ($('tuneable-dampers')) $('tuneable-dampers').checked = data.tuneable_dampers;
+  if ($('tuneable-aero-front')) $('tuneable-aero-front').checked = data.tuneable_aero_front;
+  if ($('tuneable-aero-rear')) $('tuneable-aero-rear').checked = data.tuneable_aero_rear;
+  
+  if ($('suspension-type')) $('suspension-type').value = data.suspension_type || 'Race';
+  if ($('diff-upgrade-type')) $('diff-upgrade-type').value = data.diff_upgrade_type || 'Race';
+  if ($('drivetrain')) $('drivetrain').value = data.drivetrain || 'AWD';
+  
+  app.selectGoal(data.tuning_goal || 'street_road');
+  
+  // Reload bounds
+  let tunables = {};
+  if (data.tunables_json) {
+    try {
+      tunables = JSON.parse(data.tunables_json);
+    } catch(e) {}
+  }
+  
+  const setBound = (idStr, key) => {
+    const bound = tunables[key];
+    if (!bound) return;
+    if ($(idStr + '-min') && bound.min !== null) $(idStr + '-min').value = bound.min;
+    if ($(idStr) && bound.current !== null) $(idStr).value = bound.current;
+    if ($(idStr + '-max') && bound.max !== null) $(idStr + '-max').value = bound.max;
+  };
+
+  setBound('camber-front', 'camber_front');
+  setBound('camber-rear', 'camber_rear');
+  setBound('springs-front', 'springs_front');
+  setBound('springs-rear', 'springs_rear');
+  setBound('arb-front', 'arb_front');
+  setBound('arb-rear', 'arb_rear');
+  setBound('bump-front', 'bump_front');
+  setBound('bump-rear', 'bump_rear');
+  setBound('rebound-front', 'rebound_front');
+  setBound('rebound-rear', 'rebound_rear');
+  setBound('front-weight-pct', 'front_weight_pct');
+  setBound('aero-front', 'aero_front');
+  setBound('aero-rear', 'aero_rear');
+  
+  setBound('final-drive', 'final_drive');
+  for (let i=1; i<=10; i++) setBound(`gear-${i}`, `gear_${i}`);
+  
+  setBound('toe-front', 'toe_front');
+  setBound('toe-rear', 'toe_rear');
+  setBound('caster-front', 'caster_front');
+  setBound('ride-height-front', 'ride_height_front');
+  setBound('ride-height-rear', 'ride_height_rear');
+  setBound('downforce-front', 'downforce_front');
+  setBound('downforce-rear', 'downforce_rear');
+  setBound('brake-balance', 'brake_balance');
+  setBound('brake-pressure', 'brake_pressure');
+  setBound('diff-front-accel', 'diff_front_accel');
+  setBound('diff-front-decel', 'diff_front_decel');
+  setBound('diff-rear-accel', 'diff_rear_accel');
+  setBound('diff-rear-decel', 'diff_rear_decel');
+  setBound('diff-center-balance', 'diff_center_balance');
+  
+  if (tunables.tire_pressure_front && $('psi-front')) {
+    let val = tunables.tire_pressure_front.current;
+    if (state.unit === 'metric') val *= 0.0689476;
+    $('psi-front').value = (state.unit === 'metric') ? val.toFixed(2) : val.toFixed(1);
+    if ($('psi-front-min') && tunables.tire_pressure_front.min) $('psi-front-min').value = tunables.tire_pressure_front.min;
+    if ($('psi-front-max') && tunables.tire_pressure_front.max) $('psi-front-max').value = tunables.tire_pressure_front.max;
+  }
+  
+  if (tunables.tire_pressure_rear && $('psi-rear')) {
+    let val = tunables.tire_pressure_rear.current;
+    if (state.unit === 'metric') val *= 0.0689476;
+    $('psi-rear').value = (state.unit === 'metric') ? val.toFixed(2) : val.toFixed(1);
+    if ($('psi-rear-min') && tunables.tire_pressure_rear.min) $('psi-rear-min').value = tunables.tire_pressure_rear.min;
+    if ($('psi-rear-max') && tunables.tire_pressure_rear.max) $('psi-rear-max').value = tunables.tire_pressure_rear.max;
+  }
+  
+  if (state.unit === 'metric') {
+    // Re-apply unit scaling to raw DB values loaded in input fields
+    if ($('hp')) $('hp').value = Math.round(data.hp * 0.7457);
+    if ($('weight')) $('weight').value = Math.round(data.weight_lbs * 0.453592);
+  }
+  
+  app.updateVisibility();
+  showToast(`Loaded Setup: ${data.name}`, 'info');
+};
