@@ -172,6 +172,14 @@
             <button class="btn btn-ghost" id="btn-stop-session" onclick="app.stopSession()" disabled>
               ■ Stop
             </button>
+            <button class="btn btn-ghost" onclick="app.loadSessionModal()" style="margin-top: 0.5rem; width: 100%">
+              Load Previous Session
+            </button>
+          </div>
+          
+          <div id="pending-session-controls" style="display:none; gap: 0.5rem; margin-bottom: 0.75rem">
+            <button class="btn btn-primary" style="flex:1" onclick="app.saveSession()">Save</button>
+            <button class="btn btn-ghost" style="flex:1" onclick="app.clearSession()">Discard</button>
           </div>
 
           <div class="form-group" style="margin-bottom:0.75rem">
@@ -720,6 +728,17 @@
     <button class="btn btn-ghost" onclick="document.getElementById('load-setup-modal').close()" style="padding: 4px 8px;">✕</button>
   </div>
   <div id="setup-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+    <!-- Populated dynamically via JS -->
+  </div>
+</dialog>
+
+<!-- Load Session Modal -->
+<dialog id="load-session-modal" class="card" style="padding: 1.5rem; max-width: 400px; width: 100%; border: none; border-radius: 12px; background: var(--bg-surface);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h3 style="margin: 0;">Load Telemetry Session</h3>
+    <button class="btn btn-ghost" onclick="document.getElementById('load-session-modal').close()" style="padding: 4px 8px;">✕</button>
+  </div>
+  <div id="session-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto;">
     <!-- Populated dynamically via JS -->
   </div>
 </dialog>

@@ -96,6 +96,14 @@ class VehicleSetupRepository:
         self._session.refresh(setup)
         return setup
 
+    def delete_setup(self, setup_id: int, user_id: Optional[str] = None) -> bool:
+        setup_to_delete = self.get_setup(setup_id, user_id)
+        if setup_to_delete:
+            self._session.delete(setup_to_delete)
+            self._session.commit()
+            return True
+        return False
+
 
 # ---------------------------------------------------------------------------
 # TelemetrySession repository

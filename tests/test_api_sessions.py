@@ -51,7 +51,7 @@ def test_stop_session_invalid_id_fails(client: TestClient):
     active_id = response.json()["session_id"]
     
     # Try to stop with a wrong ID
-    wrong_id = active_id + 1
+    wrong_id = str(active_id) + "_wrong"
     response = client.post(f"/api/sessions/{wrong_id}/stop")
     assert response.status_code == 409
     assert "does not match active session" in response.json()["detail"]

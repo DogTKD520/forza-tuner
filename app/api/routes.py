@@ -276,6 +276,15 @@ async def create_setup(
     return repo.create_setup(setup)
 
 
+@router.delete("/setups/{setup_id}", status_code=204)
+async def delete_setup(setup_id: int, db: Annotated[Session, Depends(get_session)]):
+    repo = VehicleSetupRepository(db)
+    success = repo.delete_setup(setup_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Setup not found")
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Telemetry Sessions
 # ---------------------------------------------------------------------------
@@ -298,23 +307,17 @@ async def start_session(
 
     processor.start_recording()
 
-    session_repo = TelemetrySessionRepository(db)
-    telemetry_session = TelemetrySession(
-        user_id="",
-        vehicle_setup_id=setup_id,
-        game_type=request.app.state.active_game,
-        status="recording",
-    )
-    created = session_repo.create_session(telemetry_session)
-    request.app.state.active_session_id = created.id
-    return {"session_id": created.id, "status": "recording"}
+    request.app.state.active_session_id = "pending"
+    request.app.state.pending_session_setup_id = setup_id
+    request.app.state.pending_session_started_at = datetime.now(timezone.utc)
+    
+    return {"session_id": "pending", "status": "recording"}
 
 
 @router.post("/sessions/{session_id}/stop")
 async def stop_session(
-    session_id: int,
+    session_id: str,
     request: Request,
-    db: Annotated[Session, Depends(get_session)],
 ):
     processor = request.app.state.processor
     active_session_id = getattr(request.app.state, "active_session_id", None)
@@ -325,34 +328,62 @@ async def stop_session(
     if active_session_id != session_id:
         raise HTTPException(status_code=409, detail=f"Requested session_id {session_id} does not match active session {active_session_id}")
 
-    session_repo = TelemetrySessionRepository(db)
-    telemetry_session = session_repo.get_session(session_id)
-    
-    if not telemetry_session or telemetry_session.status != "recording":
-        raise HTTPException(status_code=404, detail="Active session not found in database or not in recording state")
-
     summary = processor.stop_recording()
     request.app.state.active_session_id = None
     
     if summary.get("total_frames", 0) == 0:
-        if telemetry_session:
-            session_repo.delete_session(session_id)
         return {"status": "discarded", "message": "No data recorded"}
 
-    if telemetry_session:
-        telemetry_session.status = "completed"
-        telemetry_session.ended_at = datetime.now(timezone.utc)
-        if telemetry_session.started_at:
-            started_at = telemetry_session.started_at
-            if started_at.tzinfo is None:
-                started_at = started_at.replace(tzinfo=timezone.utc)
-            telemetry_session.duration_seconds = (telemetry_session.ended_at - started_at).total_seconds()
-        else:
-            telemetry_session.duration_seconds = 0.0
-        telemetry_session.summary_metrics = summary
-        session_repo.update_session(telemetry_session)
+    started_at = getattr(request.app.state, "pending_session_started_at", datetime.now(timezone.utc))
+    ended_at = datetime.now(timezone.utc)
+    duration_seconds = (ended_at - started_at).total_seconds()
+    
+    telemetry_session = TelemetrySession(
+        user_id="",
+        vehicle_setup_id=getattr(request.app.state, "pending_session_setup_id", None),
+        game_type=request.app.state.active_game,
+        status="completed",
+        started_at=started_at,
+        ended_at=ended_at,
+        duration_seconds=duration_seconds,
+    )
+    telemetry_session.summary_metrics = summary
+    
+    request.app.state.pending_session = telemetry_session
 
-    return {"session_id": session_id, "status": "completed", "summary": summary}
+    return {"session_id": "pending", "status": "completed", "summary": summary}
+
+
+@router.post("/sessions/current/save", status_code=201)
+async def save_current_session(
+    request: Request,
+    db: Annotated[Session, Depends(get_session)],
+):
+    pending_session = getattr(request.app.state, "pending_session", None)
+    if not pending_session:
+        raise HTTPException(status_code=400, detail="No pending session to save")
+        
+    session_repo = TelemetrySessionRepository(db)
+    created = session_repo.create_session(pending_session)
+    request.app.state.pending_session = None
+    return {"session_id": created.id, "status": "saved"}
+
+
+@router.post("/sessions/current/clear")
+async def clear_current_session(
+    request: Request,
+):
+    request.app.state.pending_session = None
+    return {"status": "cleared"}
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+async def delete_session(session_id: int, db: Annotated[Session, Depends(get_session)]):
+    repo = TelemetrySessionRepository(db)
+    success = repo.delete_session(session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return None
 
 
 # ---------------------------------------------------------------------------

@@ -396,12 +396,119 @@ app.stopSession = async function () {
       state.activeSessionId = null;
       showToast('No data received, session discarded', 'info');
     } else {
-      $('btn-analyze').disabled = false;
-      showToast('Session stopped — ready to analyse', 'info');
+      $('btn-analyze').disabled = true; // Wait for explicit save
+      if ($('pending-session-controls')) {
+        $('pending-session-controls').style.display = 'flex';
+      }
+      showToast('Session stopped — click Save to keep it', 'info');
     }
   } catch (err) {
     showToast(`Could not stop session: ${err.message}`, 'error');
   }
+};
+
+app.saveSession = async function () {
+  try {
+    const resp = await fetch('/api/sessions/current/save', { method: 'POST' });
+    if (!resp.ok) throw new Error('Failed to save session');
+    const data = await resp.json();
+    state.activeSessionId = data.session_id;
+    $('pending-session-controls').style.display = 'none';
+    $('btn-analyze').disabled = false;
+    showToast(`Session saved (ID ${data.session_id})`, 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+app.clearSession = async function () {
+  try {
+    await fetch('/api/sessions/current/clear', { method: 'POST' });
+    state.activeSessionId = null;
+    $('pending-session-controls').style.display = 'none';
+    $('session-timer').textContent = '00:00';
+    $('btn-analyze').disabled = true;
+    showToast('Session discarded', 'info');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+app.loadSessionModal = async function () {
+  try {
+    const resp = await fetch('/api/sessions');
+    if (!resp.ok) throw new Error('Failed to fetch sessions');
+    const sessions = await resp.json();
+    
+    const list = $('session-list');
+    list.innerHTML = '';
+    
+    if (sessions.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-muted);padding:1rem;text-align:center;">No sessions found.</div>';
+    } else {
+      sessions.forEach(session => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-ghost';
+        btn.style.textAlign = 'left';
+        btn.style.display = 'flex';
+        btn.style.justifyContent = 'space-between';
+        btn.innerHTML = `<span>Session ${session.id}</span> <span style="color:var(--text-muted)">${new Date(session.started_at).toLocaleString()} | ${Math.round(session.duration_seconds)}s</span>`;
+        btn.onclick = () => {
+          app.loadSession(session.id);
+          $('load-session-modal').close();
+        };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-ghost';
+        delBtn.style.padding = '0 0.5rem';
+        delBtn.style.color = 'var(--text-danger)';
+        delBtn.innerHTML = '✕';
+        delBtn.onclick = async (e) => {
+          e.stopPropagation();
+          await app.deleteSession(session.id);
+        };
+
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '0.5rem';
+        btn.style.flex = '1';
+        row.appendChild(btn);
+        row.appendChild(delBtn);
+        
+        list.appendChild(row);
+      });
+    }
+    
+    $('load-session-modal').showModal();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+app.deleteSession = async function (id) {
+  if (!confirm("Are you sure you want to delete this session?")) return;
+  try {
+    const resp = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+    if (!resp.ok) throw new Error('Failed to delete session');
+    
+    if (state.activeSessionId === id) {
+      state.activeSessionId = null;
+      $('btn-analyze').disabled = true;
+      $('session-timer').textContent = '00:00';
+    }
+    
+    showToast('Session deleted', 'success');
+    await app.loadSessionModal(); // Refresh list
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+app.loadSession = function (id) {
+  state.activeSessionId = id;
+  $('btn-analyze').disabled = false;
+  $('session-timer').textContent = 'LOADED';
+  showToast(`Loaded Session ${id} for Analysis`, 'success');
 };
 
 function updateSessionTimer() {
@@ -624,11 +731,47 @@ app.loadSetupModal = async function () {
           await app.loadSetup(setup.id);
           $('load-setup-modal').close();
         };
-        list.appendChild(btn);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-ghost';
+        delBtn.style.padding = '0 0.5rem';
+        delBtn.style.color = 'var(--text-danger)';
+        delBtn.innerHTML = '✕';
+        delBtn.onclick = async (e) => {
+          e.stopPropagation(); // prevent loading
+          await app.deleteSetup(setup.id);
+        };
+
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '0.5rem';
+        btn.style.flex = '1';
+        row.appendChild(btn);
+        row.appendChild(delBtn);
+        
+        list.appendChild(row);
       });
     }
     
     $('load-setup-modal').showModal();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+app.deleteSetup = async function (id) {
+  if (!confirm("Are you sure you want to delete this setup?")) return;
+  try {
+    const resp = await fetch(`/api/setups/${id}`, { method: 'DELETE' });
+    if (!resp.ok) throw new Error('Failed to delete setup');
+    
+    if (state.activeSetupId === id) {
+      state.activeSetupId = null;
+      localStorage.removeItem('activeSetupId');
+    }
+    
+    showToast('Setup deleted', 'success');
+    await app.loadSetupModal(); // Refresh the list
   } catch (err) {
     showToast(err.message, 'error');
   }
