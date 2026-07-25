@@ -126,14 +126,17 @@ function lerpColor(a, b, t) {
   return `rgb(${r},${g},${bl})`;
 }
 
-function updateTireZones(corner, temp) {
-  if (temp == null) return;
+function updateTireZones(corner, tempF) {
+  if (tempF == null) return;
   const el = $(`tz-${corner}`);
   if (el) {
-    const color = tempToColor(temp);
+    const tempC = (tempF - 32) * 5 / 9;
+    const color = tempToColor(tempC);
+    const displayTemp = state.unit === 'metric' ? tempC : tempF;
+    const symbol = state.unit === 'metric' ? '°C' : '°F';
     el.style.background = color;
-    el.title = `${temp.toFixed(0)}°C`;
-    el.textContent = `${temp.toFixed(0)}`;
+    el.title = `${displayTemp.toFixed(0)}${symbol}`;
+    el.textContent = `${displayTemp.toFixed(0)}`;
   }
 }
 
