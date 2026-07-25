@@ -283,6 +283,9 @@ async def start_session(
     setup_id: Optional[int] = None,
 ):
     processor = request.app.state.processor
+    if processor.is_recording or getattr(request.app.state, "active_session_id", None) is not None:
+        raise HTTPException(status_code=409, detail="A recording session is already active")
+
     processor.start_recording()
 
     session_repo = TelemetrySessionRepository(db)
@@ -304,13 +307,22 @@ async def stop_session(
     db: Annotated[Session, Depends(get_session)],
 ):
     processor = request.app.state.processor
+    active_session_id = getattr(request.app.state, "active_session_id", None)
+
     if not processor.is_recording:
         raise HTTPException(status_code=400, detail="No active recording session")
-
-    summary = processor.stop_recording()
+    
+    if active_session_id != session_id:
+        raise HTTPException(status_code=409, detail=f"Requested session_id {session_id} does not match active session {active_session_id}")
 
     session_repo = TelemetrySessionRepository(db)
     telemetry_session = session_repo.get_session(session_id)
+    
+    if not telemetry_session or telemetry_session.status != "recording":
+        raise HTTPException(status_code=404, detail="Active session not found in database or not in recording state")
+
+    summary = processor.stop_recording()
+    request.app.state.active_session_id = None
     
     if summary.get("total_frames", 0) == 0:
         if telemetry_session:

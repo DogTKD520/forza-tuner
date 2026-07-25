@@ -496,6 +496,7 @@ function renderRecommendations(data) {
 
   const rows = adjustments.map((adj) => {
     let deltaBadgeHtml = '';
+    const safeDelta = escapeHtml(adj.delta.toString());
     if (adj.is_upgrade_recommendation) {
       deltaBadgeHtml = `<span class="delta-badge upgrade">UPGRADE</span>`;
     } else if (adj.parameter === 'tire_compound_locked') {
@@ -503,19 +504,23 @@ function renderRecommendations(data) {
     } else {
       const badgeClass = adj.delta > 0 ? 'positive' : adj.delta < 0 ? 'negative' : 'neutral';
       const sign = adj.delta > 0 ? '+' : '';
-      deltaBadgeHtml = `<span class="delta-badge ${badgeClass}">${sign}${adj.delta}</span>`;
+      deltaBadgeHtml = `<span class="delta-badge ${badgeClass}">${sign}${safeDelta}</span>`;
     }
 
     let warningHtml = '';
     if (adj.pi_impact_warning) {
-      warningHtml = `<div class="pi-warning-banner">⚠️ ${adj.pi_impact_warning}</div>`;
+      warningHtml = `<div class="pi-warning-banner">⚠️ ${escapeHtml(adj.pi_impact_warning)}</div>`;
     }
+
+    const safeParam = escapeHtml(paramLabels[adj.parameter] ?? adj.parameter);
+    const safeCurrent = escapeHtml(adj.current_value);
+    const safeRecommended = escapeHtml(adj.recommended_value);
 
     return `
       <tr>
-        <td><strong>${paramLabels[adj.parameter] ?? adj.parameter}</strong></td>
-        <td style="font-family:'Rajdhani',sans-serif;font-weight:600">${adj.current_value}</td>
-        <td style="font-family:'Rajdhani',sans-serif;font-weight:600;color:var(--accent)">${adj.recommended_value}</td>
+        <td><strong>${safeParam}</strong></td>
+        <td style="font-family:'Rajdhani',sans-serif;font-weight:600">${safeCurrent}</td>
+        <td style="font-family:'Rajdhani',sans-serif;font-weight:600;color:var(--accent)">${safeRecommended}</td>
         <td>${deltaBadgeHtml}</td>
         <td style="color:var(--text-secondary);font-size:0.73rem">
           ${escapeHtml(adj.reason)}

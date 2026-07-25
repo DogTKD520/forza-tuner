@@ -14,17 +14,20 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.ingestion.parser import TelemetryFrame
+from app.config import get_settings
 
 
 @dataclass
 class _CornerStats:
     """Rolling accumulator for a single tyre corner."""
-    temps: list[float] = field(default_factory=list)
-    slip_ratios: list[float] = field(default_factory=list)
-    slip_angles: list[float] = field(default_factory=list)
-    combined_slips: list[float] = field(default_factory=list)
-    suspension_samples: list[float] = field(default_factory=list)
-    bottom_out_count: int = 0      # frames where travel >= 0.95
+    sum_temps: float = 0.0
+    sum_slip_ratios: float = 0.0
+    sum_slip_angles: float = 0.0
+    sum_combined_slips: float = 0.0
+    sum_suspension_samples: float = 0.0
+    max_slip_angle: float = 0.0
+    peak_suspension_travel: float = 0.0
+    bottom_out_count: int = 0      # frames where travel >= threshold
     total_frames: int = 0
 
 
@@ -36,17 +39,20 @@ class SessionAggregator:
     Thread-safety: designed for single async task use — no locking needed.
     """
 
-    BOTTOM_OUT_THRESHOLD = 0.95
     CORNERS = ["fl", "fr", "rl", "rr"]
 
     def __init__(self) -> None:
         self._corners: dict[str, _CornerStats] = {
             c: _CornerStats() for c in self.CORNERS
         }
-        self._lateral_g_samples: list[float] = []
-        self._speed_samples: list[float] = []
+        self._sum_lateral_g: float = 0.0
+        self._sum_speed: float = 0.0
         self._frame_count: int = 0
         self._latest_frame: TelemetryFrame | None = None
+        
+        settings = get_settings()
+        self._bottom_out_threshold = settings.tuning_rules.get(
+            "spring_rate", {}).get("bottom_out_threshold", 0.95)
 
     # ------------------------------------------------------------------
     # Accumulation
@@ -56,8 +62,8 @@ class SessionAggregator:
         """Feed one parsed frame into the running statistics."""
         self._frame_count += 1
         self._latest_frame = frame
-        self._speed_samples.append(frame.speed_mps)
-        self._lateral_g_samples.append(abs(frame.accel_x))
+        self._sum_speed += frame.speed_mps
+        self._sum_lateral_g += abs(frame.accel_x)
 
         corner_data = [
             ("fl", frame.tire_temp_fl, frame.suspension_fl, frame.tire_slip_ratio_fl, frame.tire_slip_angle_fl, frame.tire_combined_slip_fl),
@@ -68,13 +74,15 @@ class SessionAggregator:
 
         for corner_name, temp, suspension, ratio, angle, combined in corner_data:
             stats = self._corners[corner_name]
-            stats.temps.append(temp)
-            stats.slip_ratios.append(abs(ratio))
-            stats.slip_angles.append(abs(angle))
-            stats.combined_slips.append(abs(combined))
-            stats.suspension_samples.append(suspension)
+            stats.sum_temps += temp
+            stats.sum_slip_ratios += abs(ratio)
+            stats.sum_slip_angles += abs(angle)
+            stats.sum_combined_slips += abs(combined)
+            stats.sum_suspension_samples += suspension
+            stats.max_slip_angle = max(stats.max_slip_angle, abs(angle))
+            stats.peak_suspension_travel = max(stats.peak_suspension_travel, suspension)
             stats.total_frames += 1
-            if suspension >= self.BOTTOM_OUT_THRESHOLD:
+            if suspension >= self._bottom_out_threshold:
                 stats.bottom_out_count += 1
 
     # ------------------------------------------------------------------
@@ -97,10 +105,13 @@ class SessionAggregator:
           - rear_avg_suspension_travel
           - total_frames
         """
+        avg_speed = self._sum_speed / self._frame_count if self._frame_count > 0 else 0.0
+        avg_lat_g = self._sum_lateral_g / self._frame_count if self._frame_count > 0 else 0.0
+        
         summary: dict[str, Any] = {
             "total_frames": self._frame_count,
-            "avg_speed_mps": _safe_mean(self._speed_samples),
-            "avg_lateral_g": _safe_mean(self._lateral_g_samples),
+            "avg_speed_mps": avg_speed,
+            "avg_lateral_g": avg_lat_g,
             "game_type": self._latest_frame.game_type if self._latest_frame else "FH",
             "corners": {},
         }
@@ -109,18 +120,14 @@ class SessionAggregator:
             if stats.total_frames == 0:
                 continue
             summary["corners"][corner_name] = {
-                "avg_temp": _safe_mean(stats.temps),
-                "avg_slip_ratio": _safe_mean(stats.slip_ratios),
-                "avg_slip_angle": _safe_mean(stats.slip_angles),
-                "max_slip_angle": max(stats.slip_angles, default=0.0),
-                "avg_combined_slip": _safe_mean(stats.combined_slips),
-                "avg_suspension_travel": _safe_mean(stats.suspension_samples),
-                "peak_suspension_travel": max(stats.suspension_samples, default=0.0),
-                "bottom_out_ratio": (
-                    stats.bottom_out_count / stats.total_frames
-                    if stats.total_frames > 0
-                    else 0.0
-                ),
+                "avg_temp": stats.sum_temps / stats.total_frames,
+                "avg_slip_ratio": stats.sum_slip_ratios / stats.total_frames,
+                "avg_slip_angle": stats.sum_slip_angles / stats.total_frames,
+                "max_slip_angle": stats.max_slip_angle,
+                "avg_combined_slip": stats.sum_combined_slips / stats.total_frames,
+                "avg_suspension_travel": stats.sum_suspension_samples / stats.total_frames,
+                "peak_suspension_travel": stats.peak_suspension_travel,
+                "bottom_out_ratio": stats.bottom_out_count / stats.total_frames,
             }
 
         # Front vs rear average suspension travel (used for ARB balance calc)
@@ -130,7 +137,7 @@ class SessionAggregator:
                 for c in corners
                 if c in summary["corners"]
             ]
-            return _safe_mean(values)
+            return sum(values) / len(values) if values else 0.0
 
         summary["front_avg_suspension_travel"] = _avg_travel("fl", "fr")
         summary["rear_avg_suspension_travel"] = _avg_travel("rl", "rr")
@@ -186,11 +193,3 @@ class SessionAggregator:
     def set_latest_frame(self, frame: TelemetryFrame) -> None:
         """Set the most recently parsed frame for live broadcasting."""
         self._latest_frame = frame
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _safe_mean(values: list[float]) -> float:
-    return sum(values) / len(values) if values else 0.0
