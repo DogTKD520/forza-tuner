@@ -333,7 +333,10 @@ async def stop_session(
         telemetry_session.status = "completed"
         telemetry_session.ended_at = datetime.now(timezone.utc)
         if telemetry_session.started_at:
-            telemetry_session.duration_seconds = (telemetry_session.ended_at - telemetry_session.started_at).total_seconds()
+            started_at = telemetry_session.started_at
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=timezone.utc)
+            telemetry_session.duration_seconds = (telemetry_session.ended_at - started_at).total_seconds()
         else:
             telemetry_session.duration_seconds = 0.0
         telemetry_session.summary_metrics = summary

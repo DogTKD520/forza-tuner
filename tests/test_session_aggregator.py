@@ -67,9 +67,9 @@ def test_session_averages_and_maxima():
     assert fl["avg_temp"] == 80.0
     assert fl["avg_slip_angle"] == pytest.approx(0.15)
     assert fl["max_slip_angle"] == 0.20
-    assert fl["avg_suspension_travel"] == 0.6
+    assert fl["avg_suspension_travel"] == pytest.approx(0.6)
     assert fl["peak_suspension_travel"] == 0.8
-    assert summary["front_avg_suspension_travel"] == 0.6
+    assert summary["front_avg_suspension_travel"] == pytest.approx(0.6)
 
 def test_bottom_out_ratio():
     aggregator = SessionAggregator()
