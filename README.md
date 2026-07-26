@@ -55,7 +55,10 @@ When deploying via Portainer, create a new Stack, paste the repository URL or `d
 | `PORT` | `8001` (or desired host port) | Host HTTP port mapping (`PORT:8000`) |
 | `UDP_PORT` | `5300` | Host UDP telemetry port mapping (`UDP_PORT:5300/udp`) |
 | `DEFAULT_GAME` | `FM` or `FH` | Initial active game profile |
-| `USE_LLM` | `False` | Set `True` if Ollama is accessible |
+| `OLLAMA_HOST` | `http://ollama:11434` | Your Ollama API endpoint |
+| `OLLAMA_MODEL` | `qwen3:14b` | Which model Ollama should use |
+
+> **Note on AI Analysis:** The app comes preconfigured to talk to an Ollama container running on the same docker network. Simply flip the **Use AI Analysis** switch on the frontend before clicking Analyse!
 
 > **Note on Port Mapping:** Host port `${PORT}` automatically forwards into container port `8000`. If you set `PORT=8001` in Portainer, access your dashboard at `http://<server-ip>:8001`.
 
@@ -103,7 +106,7 @@ To stream telemetry into Forza Tuner, enable **Data Out** in your game settings:
 2. **Input Baseline Setup**: Navigate to the **Setup** tab. Fill in your car's current pressures, camber, springs, and ARB settings, then click **Save**.
 3. **Choose Tuning Goal**: Navigate to the **Tuning** tab. Select your target driving style (**Balanced**, **Grip / Cornering**, **Drift**, or **Speed / Drag**).
 4. **Record Session**: While on the **Tuning** tab, click **▶ Start Recording** before taking your car out on track. You can monitor live data in the **Telemetry** tab while driving.
-5. **Analyze**: Drive a few laps, click **■ Stop**, then click **⚡ Analyse Session**. Instant recommendations will populate showing exact parameter adjustments and mathematical justifications.
+5. **Analyze**: Drive a few laps, click **■ Stop**, then click **⚡ Analyse Session**. Instant deterministic recommendations will populate. Optionally, toggle **Use AI Analysis** on to queue the data to your local Ollama instance for expert RAG analysis based on the *forza.guide* tuning manual.
 
 ---
 
@@ -119,9 +122,8 @@ All settings can be customized in `.env` (copied from `.env.example`):
 | `DEFAULT_USER_ID` | `local_admin` | Multi-tenant user identity scope |
 | `DATABASE_URL` | `sqlite:///./data/forza_tuner.db` | SQLite database path |
 | `WEBSOCKET_FPS` | `15` | Live dashboard refresh rate (Hz) |
-| `USE_LLM` | `False` | Enable Ollama LLM strategy |
-| `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama API endpoint |
-| `OLLAMA_MODEL` | `llama3.2` | Model name for LLM analysis |
+| `OLLAMA_HOST` | `http://ollama:11434` | Ollama API endpoint |
+| `OLLAMA_MODEL` | `qwen3:14b` | Model name for LLM analysis |
 
 ---
 
