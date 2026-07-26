@@ -16,9 +16,12 @@ services:
       # Persist the SQLite database across container restarts
       - forza_data:/app/data
 
-    # Allow the container to reach a local Ollama instance on the host
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    networks:
+      - npm-bridge
 
 volumes:
   forza_data:
+
+networks:
+  npm-bridge:
+    external: true

@@ -44,8 +44,8 @@ class Settings(BaseSettings):
 
     # AI / LLM
     use_llm: bool = False
-    ollama_host: str = "http://host.docker.internal:11434"
-    ollama_model: str = "llama3.2"
+    ollama_host: str = "http://ollama:11434"
+    ollama_model: str = "qwen3:14b"
     ollama_timeout_seconds: int = 120
 
     @property
