@@ -80,6 +80,18 @@ class OllamaAnalyzer(AnalysisStrategy):
         self._base_url = settings.ollama_host.rstrip("/")
         self._model = settings.ollama_model
         self._timeout = settings.ollama_timeout_seconds
+        
+        # Load forza.guide knowledge base
+        import os
+        from pathlib import Path
+        knowledge_dir = Path("config/knowledge")
+        self._knowledge_context = ""
+        if knowledge_dir.exists():
+            kb_parts = []
+            for filepath in sorted(knowledge_dir.glob("*.md")):
+                with open(filepath, "r", encoding="utf-8") as kb_file:
+                    kb_parts.append(kb_file.read())
+            self._knowledge_context = "\n\n".join(kb_parts)
 
     async def analyze(
         self,
@@ -120,10 +132,16 @@ class OllamaAnalyzer(AnalysisStrategy):
             return await analyzer.analyze(session_metrics, setup, tuning_goal)
 
     async def _call_ollama(self, user_message: str) -> str:
+        system_prompt = _SYSTEM_PROMPT
+        if self._knowledge_context:
+            system_prompt += "\n\n--- FORZA.GUIDE KNOWLEDGE BASE ---\n"
+            system_prompt += "Use the following knowledge base to formulate your recommendations.\n\n"
+            system_prompt += self._knowledge_context
+
         payload = {
             "model": self._model,
             "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
             "stream": False,
