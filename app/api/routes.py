@@ -14,10 +14,11 @@ from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from app.analysis.base import SetupSnapshot
+from app.analysis.base import SetupSnapshot, BoundValue as BaseBoundValue
 from app.analysis.gpu_queue import TaskStatus
 from app.analysis.math_analyzer import MathBaselineAnalyzer
 from app.config import get_settings
@@ -420,6 +421,15 @@ async def analyze_session(
     session_repo.update_session(telemetry_session)
 
     tunables = db_setup.tunables
+
+    def _to_bound(data: dict) -> "BaseBoundValue":
+        """Convert a tunables dict entry to a dataclass BoundValue."""
+        return BaseBoundValue(
+            min=data.get("min"),
+            current=data.get("current", 0.0),
+            max=data.get("max"),
+        )
+
     setup_snapshot = SetupSnapshot(
         pi_rating=getattr(db_setup, "pi_rating", 700),
         hp=getattr(db_setup, "hp", 400),
@@ -435,46 +445,44 @@ async def analyze_session(
         diff_upgrade_type=getattr(db_setup, "diff_upgrade_type", "Race"),
         drivetrain=getattr(db_setup, "drivetrain", "AWD"),
         tuning_goal=active_goal,
-        tire_pressure_front=BoundValue(**tunables.get("tire_pressure_front", {"current": 0.0})),
-        tire_pressure_rear=BoundValue(**tunables.get("tire_pressure_rear", {"current": 0.0})),
-        camber_front=BoundValue(**tunables.get("camber_front", {"current": 0.0})),
-        camber_rear=BoundValue(**tunables.get("camber_rear", {"current": 0.0})),
-        springs_front=BoundValue(**tunables.get("springs_front", {"current": 0.0})),
-        springs_rear=BoundValue(**tunables.get("springs_rear", {"current": 0.0})),
-        arb_front=BoundValue(**tunables.get("arb_front", {"current": 0.0})),
-        arb_rear=BoundValue(**tunables.get("arb_rear", {"current": 0.0})),
-        bump_front=BoundValue(**tunables.get("bump_front", {"current": 0.0})),
-        bump_rear=BoundValue(**tunables.get("bump_rear", {"current": 0.0})),
-        rebound_front=BoundValue(**tunables.get("rebound_front", {"current": 0.0})),
-        rebound_rear=BoundValue(**tunables.get("rebound_rear", {"current": 0.0})),
-        front_weight_pct=BoundValue(**tunables.get("front_weight_pct", {"current": 0.0})),
-        aero_front=BoundValue(**tunables.get("aero_front", {"current": 0.0})),
-        aero_rear=BoundValue(**tunables.get("aero_rear", {"current": 0.0})),
-        final_drive=BoundValue(**tunables.get("final_drive", {"current": 0.0})),
-        gear_1=BoundValue(**tunables.get("gear_1", {"current": 0.0})),
-        gear_2=BoundValue(**tunables.get("gear_2", {"current": 0.0})),
-        gear_3=BoundValue(**tunables.get("gear_3", {"current": 0.0})),
-        gear_4=BoundValue(**tunables.get("gear_4", {"current": 0.0})),
-        gear_5=BoundValue(**tunables.get("gear_5", {"current": 0.0})),
-        gear_6=BoundValue(**tunables.get("gear_6", {"current": 0.0})),
-        gear_7=BoundValue(**tunables.get("gear_7", {"current": 0.0})),
-        gear_8=BoundValue(**tunables.get("gear_8", {"current": 0.0})),
-        gear_9=BoundValue(**tunables.get("gear_9", {"current": 0.0})),
-        gear_10=BoundValue(**tunables.get("gear_10", {"current": 0.0})),
-        toe_front=BoundValue(**tunables.get("toe_front", {"current": 0.0})),
-        toe_rear=BoundValue(**tunables.get("toe_rear", {"current": 0.0})),
-        caster_front=BoundValue(**tunables.get("caster_front", {"current": 0.0})),
-        ride_height_front=BoundValue(**tunables.get("ride_height_front", {"current": 0.0})),
-        ride_height_rear=BoundValue(**tunables.get("ride_height_rear", {"current": 0.0})),
-        downforce_front=BoundValue(**tunables.get("downforce_front", {"current": 0.0})),
-        downforce_rear=BoundValue(**tunables.get("downforce_rear", {"current": 0.0})),
-        brake_balance=BoundValue(**tunables.get("brake_balance", {"current": 0.0})),
-        brake_pressure=BoundValue(**tunables.get("brake_pressure", {"current": 0.0})),
-        diff_front_accel=BoundValue(**tunables.get("diff_front_accel", {"current": 0.0})),
-        diff_front_decel=BoundValue(**tunables.get("diff_front_decel", {"current": 0.0})),
-        diff_rear_accel=BoundValue(**tunables.get("diff_rear_accel", {"current": 0.0})),
-        diff_rear_decel=BoundValue(**tunables.get("diff_rear_decel", {"current": 0.0})),
-        diff_center_balance=BoundValue(**tunables.get("diff_center_balance", {"current": 0.0})),
+        tire_pressure_front=_to_bound(tunables.get("tire_pressure_front", {"current": 0.0})),
+        tire_pressure_rear=_to_bound(tunables.get("tire_pressure_rear", {"current": 0.0})),
+        camber_front=_to_bound(tunables.get("camber_front", {"current": 0.0})),
+        camber_rear=_to_bound(tunables.get("camber_rear", {"current": 0.0})),
+        springs_front=_to_bound(tunables.get("springs_front", {"current": 0.0})),
+        springs_rear=_to_bound(tunables.get("springs_rear", {"current": 0.0})),
+        arb_front=_to_bound(tunables.get("arb_front", {"current": 0.0})),
+        arb_rear=_to_bound(tunables.get("arb_rear", {"current": 0.0})),
+        bump_front=_to_bound(tunables.get("bump_front", {"current": 0.0})),
+        bump_rear=_to_bound(tunables.get("bump_rear", {"current": 0.0})),
+        rebound_front=_to_bound(tunables.get("rebound_front", {"current": 0.0})),
+        rebound_rear=_to_bound(tunables.get("rebound_rear", {"current": 0.0})),
+        front_weight_pct=_to_bound(tunables.get("front_weight_pct", {"current": 52.0})),
+        downforce_front=_to_bound(tunables.get("aero_front", tunables.get("downforce_front", {"current": 100.0}))),
+        downforce_rear=_to_bound(tunables.get("aero_rear", tunables.get("downforce_rear", {"current": 150.0}))),
+        final_drive=_to_bound(tunables.get("final_drive", {"current": 3.50})),
+        gear_1=_to_bound(tunables.get("gear_1", {"current": 2.89})),
+        gear_2=_to_bound(tunables.get("gear_2", {"current": 1.99})),
+        gear_3=_to_bound(tunables.get("gear_3", {"current": 1.49})),
+        gear_4=_to_bound(tunables.get("gear_4", {"current": 1.16})),
+        gear_5=_to_bound(tunables.get("gear_5", {"current": 0.94})),
+        gear_6=_to_bound(tunables.get("gear_6", {"current": 0.78})),
+        gear_7=_to_bound(tunables.get("gear_7", {"current": 0.55})),
+        gear_8=_to_bound(tunables.get("gear_8", {"current": 0.55})),
+        gear_9=_to_bound(tunables.get("gear_9", {"current": 0.48})),
+        gear_10=_to_bound(tunables.get("gear_10", {"current": 0.42})),
+        toe_front=_to_bound(tunables.get("toe_front", {"current": 0.0})),
+        toe_rear=_to_bound(tunables.get("toe_rear", {"current": 0.0})),
+        caster_front=_to_bound(tunables.get("caster_front", {"current": 5.0})),
+        ride_height_front=_to_bound(tunables.get("ride_height_front", {"current": 5.0})),
+        ride_height_rear=_to_bound(tunables.get("ride_height_rear", {"current": 5.0})),
+        brake_balance=_to_bound(tunables.get("brake_balance", {"current": 50.0})),
+        brake_pressure=_to_bound(tunables.get("brake_pressure", {"current": 100.0})),
+        diff_front_accel=_to_bound(tunables.get("diff_front_accel", {"current": 25.0})),
+        diff_front_decel=_to_bound(tunables.get("diff_front_decel", {"current": 0.0})),
+        diff_rear_accel=_to_bound(tunables.get("diff_rear_accel", {"current": 50.0})),
+        diff_rear_decel=_to_bound(tunables.get("diff_rear_decel", {"current": 15.0})),
+        diff_center_balance=_to_bound(tunables.get("diff_center_balance", {"current": 65.0})),
     )
 
     use_llm = body.use_llm and settings.use_llm
@@ -500,7 +508,7 @@ async def analyze_session(
             "summary": result.summary,
             "adjustments": [adj.__dict__ for adj in result.adjustments],
         }
-        recommendation.input_setup_json = json.dumps(setup_snapshot.__dict__)
+        recommendation.input_setup_json = json.dumps(jsonable_encoder(setup_snapshot))
         rec_repo.create_recommendation(recommendation)
 
         return {
