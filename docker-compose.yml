@@ -12,6 +12,10 @@ services:
       - "${PORT:-8001}:8000"
       - "${UDP_PORT:-5300}:${UDP_PORT:-5300}/udp"
 
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:14b}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+
     volumes:
       # Persist the SQLite database across container restarts
       - forza_data:/app/data
