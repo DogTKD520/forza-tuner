@@ -589,6 +589,7 @@ async function pollTaskStatus(taskId) {
       if (!resp.ok) {
         // Task not found or server error — stop polling and surface
         clearInterval(state.taskPollInterval);
+        $('rec-ai-spinner').style.display = 'none';
         $('task-status-row').style.display = 'none';
         $('llm-error-banner').textContent = `AI task polling failed (HTTP ${resp.status}). The task may have been lost.`;
         $('llm-error-banner').style.display = 'block';
