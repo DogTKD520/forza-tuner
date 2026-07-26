@@ -22,10 +22,16 @@ def _default_setup(**overrides) -> SetupSnapshot:
         springs_rear=BoundValue(None, 450.0, None),
         arb_front=BoundValue(None, 25.0, None),
         arb_rear=BoundValue(None, 20.0, None),
-        bump_front=BoundValue(None, 5.0, None),
-        bump_rear=BoundValue(None, 5.0, None),
+        bump_front=BoundValue(None, 2.0, None),
+        bump_rear=BoundValue(None, 2.0, None),
         rebound_front=BoundValue(None, 5.0, None),
         rebound_rear=BoundValue(None, 5.0, None),
+        diff_front_accel=BoundValue(None, 85.0, None),
+        diff_front_decel=BoundValue(None, 0.0, None),
+        diff_rear_accel=BoundValue(None, 55.0, None),
+        diff_rear_decel=BoundValue(None, 15.0, None),
+        diff_center_balance=BoundValue(None, 75.0, None),
+        brake_balance=BoundValue(None, 56.0, None),
     )
     defaults.update(overrides)
     overrides = {k: BoundValue(None, v, None) if isinstance(v, (int, float)) and k not in ["pi_rating", "hp", "weight_lbs"] else v for k, v in overrides.items()}

@@ -63,6 +63,11 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         self._goal_rules = rules.get("goals", {})
         self._tire_compounds = rules.get("tire_compounds", {})
         self._pi_classes = rules.get("pi_classes", {})
+        
+        self._pressure_baselines = rules.get("tire_pressure_baselines", {})
+        self._differential_baselines = rules.get("differential_baselines", {})
+        self._brake_baselines = rules.get("brake_baselines", {})
+        self._damping_rules = rules.get("damping_rules", {})
 
     async def analyze(
         self,
@@ -107,6 +112,11 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         # --- Tire Compound & Thermals ---
         self._analyze_tire_compound(corners, setup, adjustments)
 
+        # --- Baseline Checks (Forza Guide) ---
+        self._analyze_baseline_differential(setup, adjustments, active_goal)
+        self._analyze_baseline_brakes(setup, adjustments, active_goal)
+        self._analyze_baseline_damping(setup, adjustments)
+
         summary = self._build_summary(adjustments, active_goal)
         return TuningRecommendationResult(
             analyzer_type="math",
@@ -140,7 +150,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             pressure_adj = self._pressure_adjustment(
                 avg_temp, avg_combined_slip,
                 setup.tire_pressure_front, "tire_pressure_front",
-                pressure_rules, compound_info
+                pressure_rules, compound_info, compound_name
             )
             if pressure_adj:
                 adjustments.append(pressure_adj)
@@ -178,7 +188,7 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             pressure_adj = self._pressure_adjustment(
                 avg_temp, avg_combined_slip,
                 setup.tire_pressure_rear, "tire_pressure_rear",
-                pressure_rules, compound_info
+                pressure_rules, compound_info, compound_name
             )
             if pressure_adj:
                 adjustments.append(pressure_adj)
@@ -447,7 +457,29 @@ class MathBaselineAnalyzer(AnalysisStrategy):
         param_name: str,
         pressure_rules: dict,
         compound_info: dict,
+        compound_name: str,
     ) -> Adjustment | None:
+        # 1. Baseline checking (static bounds)
+        baseline = self._pressure_baselines.get(compound_name)
+        if baseline:
+            if pressure_bound.current < baseline["min_psi"]:
+                new_val = float(baseline["min_psi"])
+                return Adjustment(
+                    parameter=param_name,
+                    current_value=pressure_bound.current,
+                    recommended_value=new_val,
+                    delta=new_val - pressure_bound.current,
+                    reason=f"Pressure is below {compound_name} baseline minimum ({baseline['min_psi']} PSI). Increase for stability.",
+                )
+            elif pressure_bound.current > baseline["max_psi"]:
+                new_val = float(baseline["max_psi"])
+                return Adjustment(
+                    parameter=param_name,
+                    current_value=pressure_bound.current,
+                    recommended_value=new_val,
+                    delta=new_val - pressure_bound.current,
+                    reason=f"Pressure is above {compound_name} baseline maximum ({baseline['max_psi']} PSI). Decrease for contact patch.",
+                )
         ideal_min = compound_info.get("ideal_temp_min_c", 80)
         ideal_max = compound_info.get("ideal_temp_max_c", 100)
         
@@ -544,3 +576,118 @@ class MathBaselineAnalyzer(AnalysisStrategy):
             return f"[{goal_name}] Setup looks well-balanced for this session. No changes recommended."
         parts = [f"• {adj.reason}" for adj in adjustments]
         return f"[{goal_name}] Math analysis recommends the following changes:\n" + "\n".join(parts)
+
+
+    # ------------------------------------------------------------------
+    # Baseline Rules (Forza Guide)
+    # ------------------------------------------------------------------
+
+    def _analyze_baseline_differential(
+        self,
+        setup: SetupSnapshot,
+        adjustments: list[Adjustment],
+        tuning_goal: str,
+    ) -> None:
+        if setup.diff_upgrade_type not in ("Race", "Rally", "Drift", "Offroad"):
+            return
+            
+        dt = setup.drivetrain or "AWD"
+        baselines = self._differential_baselines.get(dt)
+        if not baselines:
+            return
+            
+        diff_map = {
+            "diff_front_accel": baselines.get("front_accel"),
+            "diff_front_decel": baselines.get("front_decel"),
+            "diff_rear_accel": baselines.get("rear_accel"),
+            "diff_rear_decel": baselines.get("rear_decel"),
+            "diff_center_balance": baselines.get("center_balance"),
+        }
+        
+        for param, target in diff_map.items():
+            if target is None:
+                continue
+            
+            bound = getattr(setup, param, None)
+            if not bound:
+                continue
+                
+            current = bound.current
+            # Only recommend if off by more than 5%
+            if abs(current - target) > 5.0:
+                adjustments.append(
+                    Adjustment(
+                        parameter=param,
+                        current_value=current,
+                        recommended_value=float(target),
+                        delta=float(target - current),
+                        reason=f"{dt} baseline differential recommends ~{target}% for {param}.",
+                        is_upgrade_recommendation=False,
+                    )
+                )
+
+    def _analyze_baseline_brakes(
+        self,
+        setup: SetupSnapshot,
+        adjustments: list[Adjustment],
+        tuning_goal: str,
+    ) -> None:
+        brake_type = "street"
+        if tuning_goal == "dirt_rally":
+            brake_type = "rally"
+        elif tuning_goal == "off_road":
+            brake_type = "offroad"
+        elif tuning_goal in ("street_road", "track"):
+            brake_type = "race"
+            
+        baselines = self._brake_baselines.get(brake_type)
+        if not baselines:
+            return
+            
+        target_bias = baselines.get("bias")
+        target_pressure = baselines.get("pressure")
+        
+        if setup.brake_balance.current != 50.0 and target_bias:
+            current = setup.brake_balance.current
+            if abs(current - target_bias) > 2.0:
+                adjustments.append(
+                    Adjustment(
+                        parameter="brake_balance",
+                        current_value=current,
+                        recommended_value=float(target_bias),
+                        delta=float(target_bias - current),
+                        reason=f"Baseline {brake_type} brake balance is {target_bias}% forward.",
+                        is_upgrade_recommendation=False,
+                    )
+                )
+
+    def _analyze_baseline_damping(
+        self,
+        setup: SetupSnapshot,
+        adjustments: list[Adjustment],
+    ) -> None:
+        target_ratio = self._damping_rules.get("bump_to_rebound_ratio_target", 0.40)
+        min_ratio = self._damping_rules.get("bump_to_rebound_ratio_min", 0.30)
+        max_ratio = self._damping_rules.get("bump_to_rebound_ratio_max", 0.55)
+        
+        for axle in ["front", "rear"]:
+            bump = getattr(setup, f"bump_{axle}", None)
+            rebound = getattr(setup, f"rebound_{axle}", None)
+            
+            if bump and rebound and rebound.current > 0:
+                current_ratio = bump.current / rebound.current
+                if current_ratio < min_ratio or current_ratio > max_ratio:
+                    new_bump = rebound.current * target_ratio
+                    # Round to 1 decimal
+                    new_bump = round(new_bump, 1)
+                    if abs(new_bump - bump.current) > 0.2:
+                        adjustments.append(
+                            Adjustment(
+                                parameter=f"bump_{axle}",
+                                current_value=bump.current,
+                                recommended_value=new_bump,
+                                delta=new_bump - bump.current,
+                                reason=f"Bump damping is outside the optimal 30-55% ratio of rebound. Re-aligning to ~40% ({new_bump}).",
+                                is_upgrade_recommendation=False,
+                            )
+                        )
