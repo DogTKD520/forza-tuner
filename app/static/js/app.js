@@ -574,6 +574,15 @@ async function pollTaskStatus(taskId) {
   state.taskPollInterval = setInterval(async () => {
     try {
       const resp = await fetch(`/api/tasks/${taskId}`);
+      if (!resp.ok) {
+        // Task not found or server error — stop polling and surface
+        clearInterval(state.taskPollInterval);
+        $('task-status-row').style.display = 'none';
+        $('llm-error-banner').textContent = `AI task polling failed (HTTP ${resp.status}). The task may have been lost.`;
+        $('llm-error-banner').style.display = 'block';
+        $('btn-analyze').disabled = false;
+        return;
+      }
       const data = await resp.json();
       $('task-status-label').textContent = `Status: ${data.status}`;
 

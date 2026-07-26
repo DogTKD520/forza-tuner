@@ -527,6 +527,10 @@ async def get_task_status(task_id: str, request: Request):
     queue = request.app.state.analysis_queue
     task = queue.get_task_status(task_id)
     if not task:
+        known_ids = list(queue._tasks.keys())
+        logger.warning(
+            "Task %s not found. Known task IDs: %s", task_id, known_ids
+        )
         raise HTTPException(status_code=404, detail="Task not found")
 
     response = {"task_id": task_id, "status": task.status}
