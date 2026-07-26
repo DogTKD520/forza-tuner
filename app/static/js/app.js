@@ -694,6 +694,13 @@ function renderRecommendations(data) {
     state.activeGame = data.game;
     $('btn-game-fm').classList.toggle('active', data.game === 'FM');
     $('btn-game-fh').classList.toggle('active', data.game === 'FH');
+    
+    if (data.ollama_model) {
+      const label = $('ai-toggle-label');
+      if (label) {
+        label.textContent = `Use AI Analysis (${data.ollama_model})`;
+      }
+    }
   } catch { /* continue offline */ }
 
   // Initialise unit and visibility

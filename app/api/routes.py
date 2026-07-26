@@ -150,7 +150,10 @@ class AnalyzeRequest(BaseModel):
 
 @router.get("/game-profile")
 async def get_game_profile(request: Request):
-    return {"game": request.app.state.active_game}
+    return {
+        "game": request.app.state.active_game,
+        "ollama_model": settings.ollama_model,
+    }
 
 
 @router.post("/game-profile")
