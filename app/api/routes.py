@@ -490,10 +490,24 @@ async def analyze_session(
     use_llm = body.use_llm
 
     if use_llm:
+        # Math analyzer — instant synchronous response
+        analyzer = MathBaselineAnalyzer()
+        math_result = await analyzer.analyze(session_metrics, setup_snapshot, tuning_goal=active_goal)
+        
         # Enqueue for sequential GPU processing
         queue = request.app.state.analysis_queue
         task_id = await queue.enqueue(session_metrics, setup_snapshot, use_llm=True)
-        return {"mode": "llm", "task_id": task_id, "status": TaskStatus.QUEUED, "tuning_goal": active_goal}
+        return {
+            "mode": "dual",
+            "task_id": task_id,
+            "status": TaskStatus.QUEUED,
+            "tuning_goal": active_goal,
+            "math_result": {
+                "analyzer_type": math_result.analyzer_type,
+                "summary": math_result.summary,
+                "adjustments": [adj.__dict__ for adj in math_result.adjustments],
+            }
+        }
     else:
         # Math analyzer — instant synchronous response
         analyzer = MathBaselineAnalyzer()

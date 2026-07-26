@@ -549,13 +549,25 @@ app.analyzeSession = async function () {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
-    if (data.mode === 'llm') {
+    if (data.mode === 'dual') {
       app.switchTab('tab-tuning');
-      $('task-status-row').style.display = 'flex';
-      $('task-status-label').textContent = 'Queued for GPU…';
+      
+      // Cache the math result and render it immediately
+      state.mathResult = data.math_result;
+      state.aiResult = null;
+      app.showRecView('math');
+      
+      // Setup the dual mode UI
+      $('rec-mode-bar').style.display = 'flex';
+      $('btn-rec-ai').disabled = true;
+      $('btn-rec-ai').classList.remove('pulse-glow', 'active');
+      $('rec-ai-spinner').style.display = 'block';
+      $('task-status-row').style.display = 'none'; // We don't need this anymore
+      
       pollTaskStatus(data.task_id);
     } else {
       app.switchTab('tab-tuning');
+      $('rec-mode-bar').style.display = 'none';
       renderRecommendations(data);
     }
   } catch (err) {
@@ -588,12 +600,22 @@ async function pollTaskStatus(taskId) {
 
       if (data.status === 'completed') {
         clearInterval(state.taskPollInterval);
-        $('task-status-row').style.display = 'none';
-        renderRecommendations(data.result);
+        
+        // Cache the result
+        state.aiResult = data.result;
+        
+        // Update UI
+        $('btn-rec-ai').disabled = false;
+        $('rec-ai-spinner').style.display = 'none';
+        $('btn-rec-ai').classList.add('pulse-glow');
         $('btn-analyze').disabled = false;
+        
+        showToast('AI analysis ready!', 'success');
       } else if (data.status === 'failed') {
         clearInterval(state.taskPollInterval);
-        $('task-status-row').style.display = 'none';
+        
+        $('rec-ai-spinner').style.display = 'none';
+        $('btn-rec-ai').disabled = true;
         
         $('llm-error-banner').textContent = `AI Analysis failed: ${data.error}`;
         $('llm-error-banner').style.display = 'block';
@@ -604,6 +626,20 @@ async function pollTaskStatus(taskId) {
     }
   }, 2000);
 }
+
+// ── Handle Rec View Switching ────────────────────────────────
+app.showRecView = function(view) {
+  if (view === 'math') {
+    $('btn-rec-math').classList.add('active');
+    $('btn-rec-ai').classList.remove('active');
+    if (state.mathResult) renderRecommendations(state.mathResult);
+  } else if (view === 'ai') {
+    $('btn-rec-math').classList.remove('active');
+    $('btn-rec-ai').classList.add('active');
+    $('btn-rec-ai').classList.remove('pulse-glow'); // Stop flashing once viewed
+    if (state.aiResult) renderRecommendations(state.aiResult);
+  }
+};
 
 // ── Render recommendations table ─────────────────────────────
 function renderRecommendations(data) {

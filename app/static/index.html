@@ -291,6 +291,17 @@
               </div>
             </div>
           </div>
+          
+          <div id="rec-mode-bar" style="display:none">
+            <button class="rec-mode-btn active" id="btn-rec-math" onclick="app.showRecView('math')">⚡ Math</button>
+            <button class="rec-mode-btn" id="btn-rec-ai" onclick="app.showRecView('ai')" disabled>
+              <div style="display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+                🤖 AI
+                <div class="spinner" id="rec-ai-spinner" style="display:none;width:12px;height:12px;border-width:2px"></div>
+              </div>
+            </button>
+          </div>
+
           <div id="rec-content">
             <div class="empty-state">
               <div class="icon">📊</div>
