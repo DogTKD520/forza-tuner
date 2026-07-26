@@ -194,9 +194,18 @@
             <input type="hidden" id="tuning-goal" value="street_road" />
           </div>
 
+          <div class="toggle-row" style="margin-bottom:0.75rem">
+            <span class="toggle-label">Use AI Analysis (Ollama)</span>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-ai" aria-label="Enable AI analysis" />
+              <div class="toggle-slider"></div>
+            </label>
+          </div>
+
           <button class="btn btn-danger btn-full" id="btn-analyze" onclick="app.analyzeSession()" disabled>
             ⚡ Analyse Session
           </button>
+          <div id="llm-error-banner" style="display:none; color: var(--danger); font-size: 0.8rem; margin-top: 0.5rem; text-align: center; background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 4px;"></div>
         </div>
 
         <!-- Tire Temperatures -->
@@ -279,13 +288,6 @@
               <div id="task-status-row" style="display:none;font-size:0.75rem;color:var(--text-secondary);align-items:center;">
                 <div class="spinner"></div>
                 <span id="task-status-label" style="margin-left:0.4rem;margin-right:0.4rem;">Queued for GPU…</span>
-              </div>
-              <div class="toggle-row" style="padding:0">
-                <span class="toggle-label" style="margin-right:0.4rem">AI Assist</span>
-                <label class="toggle">
-                  <input type="checkbox" id="toggle-ai" aria-label="Enable AI analysis" />
-                  <div class="toggle-slider"></div>
-                </label>
               </div>
             </div>
           </div>

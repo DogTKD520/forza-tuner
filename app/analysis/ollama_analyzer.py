@@ -124,12 +124,8 @@ class OllamaAnalyzer(AnalysisStrategy):
                 raw_output=parsed,
             )
         except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as exc:
-            logger.error("OllamaAnalyzer failed: %s. Falling back to math baseline.", exc)
-            
-            # Local import to prevent circular dependencies
-            from app.analysis.math_analyzer import MathBaselineAnalyzer
-            analyzer = MathBaselineAnalyzer()
-            return await analyzer.analyze(session_metrics, setup, tuning_goal)
+            logger.error("OllamaAnalyzer failed: %s", exc)
+            raise RuntimeError(f"AI server is unreachable or returned invalid data. Check your Ollama host connection. Error: {exc}") from exc
 
     async def _call_ollama(self, user_message: str) -> str:
         system_prompt = _SYSTEM_PROMPT

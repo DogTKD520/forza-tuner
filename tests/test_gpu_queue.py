@@ -53,7 +53,7 @@ class TestAnalysisQueue:
     @pytest.mark.asyncio
     async def test_task_transitions_from_queued_to_completed(self):
         stub = _StubAnalyzer()
-        queue = AnalysisQueue(stub)
+        queue = AnalysisQueue(math_strategy=stub, llm_strategy=stub)
         await queue.start()
 
         task_id = await queue.enqueue({"tag": "a"}, _dummy_setup())
@@ -76,7 +76,7 @@ class TestAnalysisQueue:
     async def test_tasks_processed_in_fifo_order(self):
         """With a delay, tasks enqueued first must be processed first."""
         stub = _StubAnalyzer(delay=0.02)
-        queue = AnalysisQueue(stub)
+        queue = AnalysisQueue(math_strategy=stub, llm_strategy=stub)
         await queue.start()
 
         for tag in ["first", "second", "third"]:
@@ -94,7 +94,7 @@ class TestAnalysisQueue:
     @pytest.mark.asyncio
     async def test_multiple_tasks_all_complete(self):
         stub = _StubAnalyzer()
-        queue = AnalysisQueue(stub)
+        queue = AnalysisQueue(math_strategy=stub, llm_strategy=stub)
         await queue.start()
 
         task_ids = [
@@ -112,7 +112,7 @@ class TestAnalysisQueue:
     @pytest.mark.asyncio
     async def test_unknown_task_id_returns_none(self):
         stub = _StubAnalyzer()
-        queue = AnalysisQueue(stub)
+        queue = AnalysisQueue(math_strategy=stub, llm_strategy=stub)
         await queue.start()
         assert queue.get_task_status("non-existent-id") is None
         await queue.stop()

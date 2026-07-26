@@ -533,6 +533,7 @@ app.analyzeSession = async function () {
   const useLlm = $('toggle-ai').checked;
   const goal = $('tuning-goal').value || 'street_road';
   $('btn-analyze').disabled = true;
+  $('llm-error-banner').style.display = 'none';
 
   try {
     const resp = await fetch('/api/analyze', {
@@ -558,7 +559,12 @@ app.analyzeSession = async function () {
       renderRecommendations(data);
     }
   } catch (err) {
-    showToast(`Analysis failed: ${err.message}`, 'error');
+    if (useLlm) {
+      $('llm-error-banner').textContent = `AI Analysis failed: ${err.message}`;
+      $('llm-error-banner').style.display = 'block';
+    } else {
+      showToast(`Analysis failed: ${err.message}`, 'error');
+    }
     $('btn-analyze').disabled = false;
   }
 };
@@ -579,7 +585,9 @@ async function pollTaskStatus(taskId) {
       } else if (data.status === 'failed') {
         clearInterval(state.taskPollInterval);
         $('task-status-row').style.display = 'none';
-        showToast(`AI analysis failed: ${data.error}`, 'error');
+        
+        $('llm-error-banner').textContent = `AI Analysis failed: ${data.error}`;
+        $('llm-error-banner').style.display = 'block';
         $('btn-analyze').disabled = false;
       }
     } catch {

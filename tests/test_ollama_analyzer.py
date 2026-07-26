@@ -24,10 +24,10 @@ async def test_ollama_fallback_on_http_error():
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.side_effect = httpx.HTTPError("Connection failed")
         
-        result = await analyzer.analyze({}, _dummy_setup(), "street_road")
+        with pytest.raises(RuntimeError) as exc_info:
+            await analyzer.analyze({}, _dummy_setup(), "street_road")
         
-        assert result.analyzer_type == "math"
-        assert "math" in str(result) or len(result.adjustments) >= 0
+        assert "AI server is unreachable or returned invalid data" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_ollama_fallback_on_json_error():
@@ -41,6 +41,7 @@ async def test_ollama_fallback_on_json_error():
         mock_response.raise_for_status = lambda: None
         mock_post.return_value = mock_response
         
-        result = await analyzer.analyze({}, _dummy_setup(), "street_road")
+        with pytest.raises(RuntimeError) as exc_info:
+            await analyzer.analyze({}, _dummy_setup(), "street_road")
         
-        assert result.analyzer_type == "math"
+        assert "AI server is unreachable or returned invalid data" in str(exc_info.value)

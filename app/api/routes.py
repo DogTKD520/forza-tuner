@@ -484,13 +484,12 @@ async def analyze_session(
         diff_rear_decel=_to_bound(tunables.get("diff_rear_decel", {"current": 15.0})),
         diff_center_balance=_to_bound(tunables.get("diff_center_balance", {"current": 65.0})),
     )
-
-    use_llm = body.use_llm and settings.use_llm
+    use_llm = body.use_llm
 
     if use_llm:
         # Enqueue for sequential GPU processing
         queue = request.app.state.analysis_queue
-        task_id = await queue.enqueue(session_metrics, setup_snapshot)
+        task_id = await queue.enqueue(session_metrics, setup_snapshot, use_llm=True)
         return {"mode": "llm", "task_id": task_id, "status": TaskStatus.QUEUED, "tuning_goal": active_goal}
     else:
         # Math analyzer — instant synchronous response

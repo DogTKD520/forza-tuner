@@ -20,8 +20,6 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.analysis.gpu_queue import AnalysisQueue
-from app.analysis.math_analyzer import MathBaselineAnalyzer
-from app.analysis.ollama_analyzer import OllamaAnalyzer
 from app.api.routes import router as rest_router
 from app.api.websocket import router as ws_router
 from app.config import get_settings
@@ -58,18 +56,16 @@ async def lifespan(app: FastAPI):
     app.state.udp_transport = transport
     app.state.udp_worker_task = worker_task
 
-    # Analysis strategy & queue
-    strategy = OllamaAnalyzer() if settings.use_llm else MathBaselineAnalyzer()
-    queue = AnalysisQueue(strategy)
+    # Analysis queue
+    queue = AnalysisQueue()
     await queue.start()
     app.state.analysis_queue = queue
 
     logger.info(
-        "Forza Tuner started | game=%s | udp=%s:%d | llm=%s",
+        "Forza Tuner started | game=%s | udp=%s:%d",
         settings.default_game,
         settings.udp_host,
         settings.udp_port,
-        settings.use_llm,
     )
 
     yield   # hand control to FastAPI

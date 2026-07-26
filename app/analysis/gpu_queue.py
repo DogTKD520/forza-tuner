@@ -35,6 +35,7 @@ class AnalysisTask:
     task_id: str
     session_metrics: dict[str, Any]
     setup: SetupSnapshot
+    use_llm: bool = False
     status: TaskStatus = TaskStatus.QUEUED
     result: TuningRecommendationResult | None = None
     error: str | None = None
@@ -52,8 +53,20 @@ class AnalysisQueue:
         await queue.stop()                        # call at shutdown
     """
 
-    def __init__(self, strategy: AnalysisStrategy) -> None:
-        self._strategy = strategy
+    def __init__(
+        self,
+        math_strategy: AnalysisStrategy | None = None,
+        llm_strategy: AnalysisStrategy | None = None,
+    ) -> None:
+        if math_strategy is None:
+            from app.analysis.math_analyzer import MathBaselineAnalyzer
+            math_strategy = MathBaselineAnalyzer()
+        if llm_strategy is None:
+            from app.analysis.ollama_analyzer import OllamaAnalyzer
+            llm_strategy = OllamaAnalyzer()
+            
+        self._math_strategy = math_strategy
+        self._llm_strategy = llm_strategy
         self._queue: asyncio.Queue[AnalysisTask] = asyncio.Queue()
         self._tasks: dict[str, AnalysisTask] = {}
         self._worker_task: asyncio.Task | None = None
@@ -77,6 +90,7 @@ class AnalysisQueue:
         self,
         session_metrics: dict[str, Any],
         setup: SetupSnapshot,
+        use_llm: bool = False,
     ) -> str:
         """Add a job to the queue and return its task_id for status polling."""
         task_id = str(uuid.uuid4())
@@ -84,6 +98,7 @@ class AnalysisQueue:
             task_id=task_id,
             session_metrics=session_metrics,
             setup=setup,
+            use_llm=use_llm,
         )
         self._tasks[task_id] = task
         await self._queue.put(task)
@@ -104,7 +119,8 @@ class AnalysisQueue:
             task.status = TaskStatus.PROCESSING
             logger.info("Processing analysis task %s", task.task_id)
             try:
-                task.result = await self._strategy.analyze(
+                strategy = self._llm_strategy if task.use_llm else self._math_strategy
+                task.result = await strategy.analyze(
                     task.session_metrics, task.setup, tuning_goal=task.setup.tuning_goal
                 )
                 task.status = TaskStatus.COMPLETED
