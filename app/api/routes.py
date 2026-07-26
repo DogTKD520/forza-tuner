@@ -10,6 +10,7 @@ it down to the repository layer.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
@@ -33,6 +34,7 @@ from app.db.repositories import (
 
 router = APIRouter(prefix="/api")
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
