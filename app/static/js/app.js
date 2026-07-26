@@ -562,8 +562,10 @@ app.analyzeSession = async function () {
       $('btn-rec-ai').disabled = true;
       $('btn-rec-ai').classList.remove('pulse-glow', 'active');
       $('rec-ai-spinner').style.display = 'block';
+      $('btn-rec-ai-cancel').style.display = 'inline-flex';
       $('task-status-row').style.display = 'none'; // We don't need this anymore
       
+      state.activeTaskId = data.task_id;
       pollTaskStatus(data.task_id);
     } else {
       app.switchTab('tab-tuning');
@@ -590,6 +592,7 @@ async function pollTaskStatus(taskId) {
         // Task not found or server error — stop polling and surface
         clearInterval(state.taskPollInterval);
         $('rec-ai-spinner').style.display = 'none';
+        $('btn-rec-ai-cancel').style.display = 'none';
         $('task-status-row').style.display = 'none';
         $('llm-error-banner').textContent = `AI task polling failed (HTTP ${resp.status}). The task may have been lost.`;
         $('llm-error-banner').style.display = 'block';
@@ -608,6 +611,7 @@ async function pollTaskStatus(taskId) {
         // Update UI
         $('btn-rec-ai').disabled = false;
         $('rec-ai-spinner').style.display = 'none';
+        $('btn-rec-ai-cancel').style.display = 'none';
         $('btn-rec-ai').classList.add('pulse-glow');
         $('btn-analyze').disabled = false;
         
@@ -616,6 +620,7 @@ async function pollTaskStatus(taskId) {
         clearInterval(state.taskPollInterval);
         
         $('rec-ai-spinner').style.display = 'none';
+        $('btn-rec-ai-cancel').style.display = 'none';
         $('btn-rec-ai').disabled = true;
         
         $('llm-error-banner').textContent = `AI Analysis failed: ${data.error}`;
@@ -639,6 +644,31 @@ app.showRecView = function(view) {
     $('btn-rec-ai').classList.add('active');
     $('btn-rec-ai').classList.remove('pulse-glow'); // Stop flashing once viewed
     if (state.aiResult) renderRecommendations(state.aiResult);
+  }
+};
+
+// ── Handle AI Cancellation ───────────────────────────────────
+app.cancelAiAnalysis = async function(event) {
+  event.stopPropagation(); // Don't trigger tab switch
+  
+  if (!state.taskPollInterval) return;
+  clearInterval(state.taskPollInterval);
+  state.taskPollInterval = null;
+  
+  $('rec-ai-spinner').style.display = 'none';
+  $('btn-rec-ai-cancel').style.display = 'none';
+  $('btn-rec-ai').disabled = true;
+  $('btn-analyze').disabled = false;
+  
+  showToast('AI analysis cancelled.', 'info');
+  
+  if (state.activeTaskId) {
+    try {
+      await fetch(`/api/tasks/${state.activeTaskId}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error("Failed to send cancel signal to server:", err);
+    }
+    state.activeTaskId = null;
   }
 };
 

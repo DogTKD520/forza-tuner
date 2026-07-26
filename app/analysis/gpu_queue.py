@@ -39,6 +39,7 @@ class AnalysisTask:
     status: TaskStatus = TaskStatus.QUEUED
     result: TuningRecommendationResult | None = None
     error: str | None = None
+    _async_task: asyncio.Task | None = None
 
 
 class AnalysisQueue:
@@ -108,6 +109,23 @@ class AnalysisQueue:
     def get_task_status(self, task_id: str) -> AnalysisTask | None:
         return self._tasks.get(task_id)
 
+    def cancel_task(self, task_id: str) -> bool:
+        task = self._tasks.get(task_id)
+        if not task:
+            return False
+            
+        if task.status == TaskStatus.QUEUED:
+            task.status = TaskStatus.FAILED
+            task.error = "Cancelled by user"
+            logger.info("Cancelled queued analysis task %s", task_id)
+            return True
+        elif task.status == TaskStatus.PROCESSING:
+            if task._async_task and not task._async_task.done():
+                task._async_task.cancel()
+                logger.info("Sent cancellation signal to processing task %s", task_id)
+                return True
+        return False
+
     # ------------------------------------------------------------------
     # Internal worker
     # ------------------------------------------------------------------
@@ -120,11 +138,17 @@ class AnalysisQueue:
             logger.info("Processing analysis task %s", task.task_id)
             try:
                 strategy = self._llm_strategy if task.use_llm else self._math_strategy
-                task.result = await strategy.analyze(
-                    task.session_metrics, task.setup, tuning_goal=task.setup.tuning_goal
+                # Wrap the strategy execution in a task so it can be cancelled
+                task._async_task = asyncio.create_task(
+                    strategy.analyze(task.session_metrics, task.setup, tuning_goal=task.setup.tuning_goal)
                 )
+                task.result = await task._async_task
                 task.status = TaskStatus.COMPLETED
                 logger.info("Completed analysis task %s", task.task_id)
+            except asyncio.CancelledError:
+                task.status = TaskStatus.FAILED
+                task.error = "Cancelled by user"
+                logger.info("Analysis task %s was cancelled", task.task_id)
             except Exception as exc:
                 task.status = TaskStatus.FAILED
                 task.error = str(exc)

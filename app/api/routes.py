@@ -558,3 +558,10 @@ async def get_task_status(task_id: str, request: Request):
     if task.error:
         response["error"] = task.error
     return response
+
+@router.delete("/tasks/{task_id}")
+async def cancel_task(task_id: str, request: Request):
+    queue = request.app.state.analysis_queue
+    if queue.cancel_task(task_id):
+        return {"status": "cancelled"}
+    raise HTTPException(status_code=404, detail="Task not found or already completed")

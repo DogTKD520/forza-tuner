@@ -809,3 +809,23 @@ input::placeholder { color: var(--text-muted); }
   animation: pulseGlow 2s infinite !important;
   opacity: 1 !important;
 }
+
+.cancel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+}
+
+.cancel-icon:hover {
+  background: rgba(239, 68, 68, 0.8);
+  color: white;
+}
